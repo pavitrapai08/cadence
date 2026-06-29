@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { QUICK_HOURS, formatHours, parseHours } from "@/lib/hours";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,30 +12,47 @@ interface HoursInputProps {
 }
 
 export function HoursInput({ value, onChange, disabled }: HoursInputProps) {
-  const display = value > 0 ? String(value) : "";
+  const [inputStr, setInputStr] = useState(value > 0 ? formatHours(value) : "");
+  const isFocused = useRef(false);
+
+  // Sync display when value changes from outside (quick button click)
+  useEffect(() => {
+    if (!isFocused.current) {
+      setInputStr(value > 0 ? formatHours(value) : "");
+    }
+  }, [value]);
+
+  function handleFocus() {
+    isFocused.current = true;
+  }
 
   function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
+    isFocused.current = false;
     const parsed = parseHours(e.target.value);
-    if (parsed > 0) onChange(parsed);
+    if (parsed > 0) {
+      onChange(parsed);
+      setInputStr(formatHours(parsed));
+    } else {
+      setInputStr(value > 0 ? formatHours(value) : "");
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      const parsed = parseHours((e.target as HTMLInputElement).value);
-      if (parsed > 0) onChange(parsed);
-    }
+    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
   }
 
   return (
     <div className="space-y-2">
-      <Input
+      <input
         type="text"
-        placeholder="e.g. 1.5 or 1h 30m"
-        defaultValue={display}
+        placeholder="e.g. 45m or 1h 30m"
+        value={inputStr}
+        onChange={(e) => setInputStr(e.target.value)}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className="w-full"
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
       />
       <div className="flex gap-2">
         {QUICK_HOURS.map((h) => (
