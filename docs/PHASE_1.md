@@ -30,26 +30,41 @@ Month-locked errors surface as HTTP 409 with `code: "month_locked"`.
 ### Calendar + entry components (`components/hours/`)
 | File | What it does |
 |---|---|
-| `HoursShell.tsx` | Client orchestrator — view toggle, week nav, DnD context, entry state, fetch |
-| `CalendarWeek.tsx` | Full-width bordered column grid, Mon–Fri (Sat/Sun appear only if entries exist). Day headers stack day name / date / hours. No gap between columns — separated by thin borders. |
+| `HoursShell.tsx` | Client orchestrator — segmented-pill view toggle, week nav, DnD context, entry state, fetch. Toolbar shows week total as a green badge. |
+| `CalendarWeek.tsx` | Rounded-xl card with thin column separators (no outer spreadsheet border). Headers are white/transparent with a large bold date and a tiny day abbreviation — no gray background. Today column has a subtle green tint. Columns have 260px min-height. Empty columns show a dashed "+ New" button; filled columns show it on hover. Sat/Sun appear only when entries exist. |
 | `CalendarDay.tsx` | Single-day view with drop zone |
 | `CalendarMonth.tsx` | Monthly grid (Mon–Sun headers). Each cell shows date + hours; project chips per entry; hover reveals "+ New Entry". Search bar filters by project name or note. |
 | `DraggableEntry.tsx` | Entry card wrapped in @dnd-kit `useDraggable` |
-| `DroppableDay.tsx` | Day column drop target — minimal tint on drag-over, no colored ring |
-| `EntryCard.tsx` | Project colour stripe, name, hours, lock icon / drag handle |
-| `EntryModal.tsx` | Right-side **Sheet** panel (not a dialog) — slides in from the right, calendar stays visible. Project shown as a flat selectable list with colour dots. Hours, notes, tags, copy/move/delete inside the panel. |
-| `HoursInput.tsx` | Hours field + quick buttons (15m / 30m / 1h / 2h) |
-| `TagSelector.tsx` | Tag pills, multi-select, amber warning for required tags |
-| `WelcomeCard.tsx` | First-run card (shown when no entries + dismissed_welcome=false) |
+| `DroppableDay.tsx` | Day column drop target — minimal `bg-primary/[0.04]` tint on drag-over, no colored ring |
+| `EntryCard.tsx` | 3px project-colour left stripe, project name, hours shown in project colour, lock icon / drag handle. Hover lifts with shadow. |
+| `EntryModal.tsx` | Right-side **Sheet** panel — slides in from the right, calendar stays fully visible. Field order: Notes → Polish with AI → Project → Logged time → Tag. Project list is flat rows with colour dots + checkmark; search bar appears when >5 projects. |
+| `HoursInput.tsx` | Controlled input displaying formatted time ("45m", "1h 30m") — not raw decimal. Syncs with quick buttons via useEffect + focus-ref guard. Quick buttons: 15m / 30m / 1h / 2h. |
+| `TagSelector.tsx` | **Single-select** searchable dropdown. Trigger shows the selected tag name (or "Choose a tag…"). Dropdown has a search field and radio-button list. Clicking the selected tag deselects it. Required tags display a "Required" badge. |
+| `WelcomeCard.tsx` | First-run card with gradient background and icon header (shown when no entries + dismissed_welcome=false) |
 | `MonthLockedBanner.tsx` | Amber banner for locked months |
 
 ### Hours page
 - [app/(app)/hours/page.tsx](../app/(app)/hours/page.tsx) — Server component. Parallel-fetches user profile, project memberships (with tags), month locks, and current week's entries. Passes to `HoursShell` as props (no loading flash on first paint).
 
+### UI / visual design system
+All changes shipped post-Phase-1-initial as a polish pass:
+
+| Area | Decision |
+|---|---|
+| Primary colour | Brand forest green (`oklch(0.42 0.13 152)`) — replaces near-black. All buttons, focus rings, active states, today highlights are now green. |
+| Accent / secondary | Subtle green tint (`oklch(0.97 0.01 152)`) so hover states feel brand-aligned rather than pure gray. |
+| Sidebar | Dark slate-900 background, white nav text, green AI tab accent, "DecisionFoundry" footer label. Visually separates nav from content. |
+| TopBar | User avatar circle with initials derived from email (e.g. `pavitra.p@…` → "PP"). |
+| Mobile nav | Active tab uses primary green. |
+| View toggle | Segmented pill (bg-muted container, bg-background active pill) — Notion/Linear pattern. |
+| Week total | Green rounded badge (`45m this week`) instead of plain muted text. |
+
 ### Entry panel design decisions
-- **Sheet not Dialog** — the entry form slides in from the right so the calendar remains visible and in context. There is no backdrop overlay covering the calendar.
-- **Project as a list** — projects are displayed as flat tappable rows (colour dot + name + checkmark when selected) rather than a `<select>` dropdown. This matches Timely's UX and is faster to use on both desktop and mobile.
-- **No coloured hover backgrounds** — the droppable day highlight during drag is a barely-visible tint (`bg-primary/[0.04]`). Day columns have no background change on hover.
+- **Sheet not Dialog** — the Dialog approach (centered overlay with `bg-black/10` backdrop) let the calendar bleed through, making the UI look cluttered. Sheet slides in from the right; calendar stays fully visible and in context. This is how Timely works.
+- **Field order** — Notes first (primary action), then Project, Logged time, Tag. Matches Timely's "what did you work on?" top-of-form pattern.
+- **Single-select tags** — users select exactly one tag per entry. The dropdown uses radio-button styling to make this clear. The DB still stores `tag_ids text[]` (max one item); billability is evaluated as before.
+- **Formatted time display** — input shows "45m" not "0.75". Parses on blur; accepts "45m", "1h 30m", "1.5", etc.
+- **Project search** — appears automatically when the user has more than 5 projects assigned.
 
 ### Month-lock enforcement in UI
 - On page load, `buildLockedSet(lockRows)` creates a `Set<"YYYY-MM">`.
@@ -74,11 +89,15 @@ The button is present in the entry panel but is `disabled` with tooltip "AI poli
 ### Functional checklist
 | Check | How |
 |---|---|
-| Entry panel slides in from right | Click "+ New" on any day — Sheet slides in, calendar stays visible |
-| Project list shows only assigned projects | Only projects from `project_members` appear in the list |
-| Selecting a project highlights it (checkmark) | Click a project row — row gets accent background + ✓ |
-| Tags load for the selected project | Change project — tag pills update, previous selection cleared |
-| Required tag (All Hands on Org Activity) shows amber warning | Select that project, do not select All Hands — warning appears, Save not blocked |
+| Entry panel slides in from right | Click "+ New" on any day — Sheet slides in, calendar stays fully visible |
+| No dark overlay behind the panel | Calendar is clearly visible to the left of the open panel |
+| Project list shows only assigned projects | Only projects from `project_members` appear |
+| Selecting a project highlights it (checkmark) | Click a project row — accent background + ✓ |
+| Tags load for the selected project | Change project — dropdown updates, previous selection cleared |
+| Tag is single-select (radio) | Select a tag — others deselect. Click again to deselect. |
+| Required tag (All Hands on Org Activity) shows badge | Open that project in tag dropdown — "Required" label visible |
+| Logged time shows formatted (not decimal) | Edit existing 0.75h entry — input shows "45m" |
+| Quick buttons sync to display | Click "1h" — input shows "1h" |
 | Create entry → persists after reload | Log an entry, reload — it's there |
 | Edit entry → changes saved | Click existing entry card, edit hours/notes, save — updated |
 | Delete entry | Open entry panel → Delete — entry gone |
@@ -87,12 +106,16 @@ The button is present in the entry panel but is `disabled` with tooltip "AI poli
 | Drag entry Mon→Thu | Drag card between columns — persists on reload |
 | Drag to locked month → toast, no move | Drag to a locked day — toast fires, entry stays |
 | Locked month: no "+ New", read-only panel | Navigate to a previous month — lock icon on cards, panel opens read-only |
-| Week column grid: no background on hover | Hover over an empty column — no colour change |
-| Day headers: day / date / hours stacked | Week view shows e.g. MON / 22 / 0h in each column header |
+| Calendar headers are white (not gray) | Week view column headers have no gray background tint |
+| Empty column shows dashed "+ New" button | Empty day column shows bordered dashed button |
+| Filled column shows "+ New" on hover | Column with entries — hover to reveal "+ New" at bottom |
+| Week total shown as green badge | Log entries — "Xh Ym this week" appears as green pill in toolbar |
+| Today column has subtle green tint | Current day column header has a faint green background |
+| Sidebar is dark slate | Left nav is dark background with white text |
+| User initials in top bar | Top-right shows avatar circle with your initials |
 | Week navigation Monday start | `<` / `>` — week always starts Monday |
 | Today button returns to current week | Navigate away, click Today |
 | Month view search | Type a project name → only matching entries shown |
-| Month cells show "+ New Entry" on hover | Hover over an empty cell in month view |
 | Welcome card shown first time | New account (zero entries, dismissed_welcome=false) → card shown; dismiss → gone on reload |
 
 ### API smoke tests (curl / Postman)
