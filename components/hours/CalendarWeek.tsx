@@ -70,13 +70,13 @@ export function CalendarWeek({
   }, [days, lockedMonths]);
 
   return (
-    <div>
+    <div className="space-y-3">
       {lockedBanners.map((b) => (
         <MonthLockedBanner key={b.key} label={b.label} />
       ))}
 
-      {/* Full-width column grid — no gaps, separated by borders */}
-      <div className="flex overflow-hidden rounded-lg border border-border">
+      {/* Calendar grid — no outer border, just column separators */}
+      <div className="flex overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {days.map((day, idx) => {
           const dateStr = fmt(day, "yyyy-MM-dd");
           const dayEntries = byDate.get(dateStr) ?? [];
@@ -89,31 +89,43 @@ export function CalendarWeek({
             <div
               key={dateStr}
               className={cn(
-                "flex flex-1 flex-col min-w-0",
+                "flex min-w-0 flex-1 flex-col",
                 idx < days.length - 1 && "border-r border-border"
               )}
             >
-              {/* Day header */}
+              {/* Day header — clean, no gray background */}
               <div
                 className={cn(
                   "select-none border-b border-border px-3 py-3",
-                  today ? "bg-primary/5" : "bg-muted/30"
+                  today && "bg-primary/5"
                 )}
               >
-                <div className={cn("text-[11px] font-medium uppercase tracking-widest", today ? "text-primary" : "text-muted-foreground")}>
-                  {format(day, "EEE")}
-                </div>
-                <div className={cn("text-xl font-bold leading-tight", today ? "text-primary" : "text-foreground")}>
-                  {format(day, "d")}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {dailyTotal > 0 ? formatHours(dailyTotal) : "0h"}
+                <div className="flex items-start justify-between gap-1">
+                  <div>
+                    <div className={cn(
+                      "text-[10px] font-semibold uppercase tracking-widest",
+                      today ? "text-primary" : "text-muted-foreground/70"
+                    )}>
+                      {format(day, "EEE")}
+                    </div>
+                    <div className={cn(
+                      "mt-0.5 text-2xl font-bold leading-none",
+                      today ? "text-primary" : "text-foreground"
+                    )}>
+                      {format(day, "d")}
+                    </div>
+                  </div>
+                  {dailyTotal > 0 && (
+                    <span className="mt-0.5 text-[11px] font-semibold text-primary tabular-nums">
+                      {formatHours(dailyTotal)}
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* Entries + drop zone */}
               <DroppableDay date={dateStr} locked={locked}>
-                <div className="flex flex-col gap-1.5 p-2 min-h-[140px]">
+                <div className="flex min-h-[260px] flex-col gap-1.5 p-2">
                   {dayEntries.map((entry) => (
                     <DraggableEntry
                       key={entry.id}
@@ -124,16 +136,21 @@ export function CalendarWeek({
                     />
                   ))}
 
-                  {/* Add button */}
+                  {/* New entry button */}
                   {!locked && !submitted && (
                     <button
                       onClick={() => onNewEntry(dateStr)}
                       className={cn(
-                        "flex w-full items-center justify-center gap-1 rounded py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                        dayEntries.length === 0 && "mt-auto"
+                        "group flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium text-muted-foreground/60 transition-all hover:text-primary",
+                        dayEntries.length === 0
+                          ? "mt-1 border border-dashed border-border hover:border-primary/40 hover:bg-primary/5"
+                          : "hover:bg-primary/5"
                       )}
                     >
-                      <Plus className="h-3 w-3" /> New
+                      <Plus className="h-3.5 w-3.5" />
+                      <span className={cn(dayEntries.length === 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                        New
+                      </span>
                     </button>
                   )}
                 </div>

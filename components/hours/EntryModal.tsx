@@ -4,11 +4,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Sparkles, Trash2, Copy, ArrowRight, Lock, Search } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HoursInput } from "./HoursInput";
@@ -92,15 +92,10 @@ export function EntryModal({
             body: JSON.stringify(body),
           });
       const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error?.message ?? "Failed to save.");
-        return;
-      }
+      if (!res.ok) { toast.error(json.error?.message ?? "Failed to save."); return; }
       onSaved(json.data);
       onClose();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleDelete() {
@@ -108,16 +103,10 @@ export function EntryModal({
     setDeleting(true);
     try {
       const res = await fetch(`/api/entries/${existing.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const j = await res.json();
-        toast.error(j.error?.message ?? "Failed to delete.");
-        return;
-      }
+      if (!res.ok) { const j = await res.json(); toast.error(j.error?.message ?? "Failed to delete."); return; }
       onDeleted(existing.id);
       onClose();
-    } finally {
-      setDeleting(false);
-    }
+    } finally { setDeleting(false); }
   }
 
   async function handleCopyMove() {
@@ -130,29 +119,28 @@ export function EntryModal({
   }
 
   const dateLabel = format(new Date(state.date + "T00:00:00"), "EEEE, d MMM yyyy");
-  const title =
-    state.mode === "create"
-      ? "New entry"
-      : state.mode === "readonly"
-      ? "Entry"
-      : "Edit entry";
+  const title = state.mode === "create" ? "New entry" : state.mode === "readonly" ? "Entry" : "Edit entry";
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-[480px] p-0 gap-0 overflow-hidden flex flex-col max-h-[90vh]">
+    <Sheet open onOpenChange={onClose}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="flex flex-col gap-0 p-0 sm:max-w-[400px]"
+      >
         {/* Header */}
-        <DialogHeader className="shrink-0 border-b border-border px-5 py-4">
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+        <SheetHeader className="shrink-0 border-b border-border px-5 py-4 pr-12">
+          <SheetTitle className="text-base font-semibold leading-tight">{title}</SheetTitle>
           <p className="text-sm text-muted-foreground">{dateLabel}</p>
           {readonly && (
-            <div className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
-              <Lock className="h-3 w-3" /> This entry is locked or submitted — read only.
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-600">
+              <Lock className="h-3 w-3" /> Locked or submitted — read only.
             </div>
           )}
-        </DialogHeader>
+        </SheetHeader>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-5">
           {datePrompt ? (
             <div className="space-y-3">
               <p className="text-sm font-medium">
@@ -165,9 +153,7 @@ export function EntryModal({
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setDatePrompt(null)}>
-                  Back
-                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDatePrompt(null)}>Back</Button>
                 <Button size="sm" disabled={!targetDate} onClick={handleCopyMove}>
                   {datePrompt === "copy" ? "Copy" : "Move"}
                 </Button>
@@ -175,9 +161,9 @@ export function EntryModal({
             </div>
           ) : (
             <div className="space-y-5">
-              {/* Notes — first field */}
+              {/* Notes */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Notes</label>
+                <label className="text-sm font-medium">Notes</label>
                 <Textarea
                   placeholder="What did you work on?"
                   value={rawNotes}
@@ -205,21 +191,18 @@ export function EntryModal({
 
               {/* Project */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Project</label>
+                <label className="text-sm font-medium">Project</label>
                 {readonly ? (
                   <div className="flex items-center gap-2 text-sm">
                     {selectedProject && (
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: selectedProject.colour }}
-                      />
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: selectedProject.colour }} />
                     )}
                     <span>{selectedProject?.name ?? "Unknown"}</span>
                   </div>
                 ) : (
-                  <div className="rounded-md border border-border overflow-hidden">
+                  <div className="rounded-lg border border-border overflow-hidden">
                     {projects.length > 5 && (
-                      <div className="flex items-center gap-2 border-b border-border px-3 py-2 bg-muted/20">
+                      <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-3 py-2">
                         <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         <input
                           type="text"
@@ -230,7 +213,7 @@ export function EntryModal({
                         />
                       </div>
                     )}
-                    <div className="max-h-[180px] overflow-y-auto">
+                    <div className="max-h-[200px] overflow-y-auto">
                       {filteredProjects.length === 0 ? (
                         <p className="px-3 py-2 text-sm text-muted-foreground">No projects found.</p>
                       ) : (
@@ -240,19 +223,14 @@ export function EntryModal({
                             type="button"
                             onClick={() => handleProjectSelect(p.id)}
                             className={cn(
-                              "flex w-full items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors border-b border-border last:border-b-0",
-                              projectId === p.id
-                                ? "bg-accent font-medium"
-                                : "hover:bg-accent/50"
+                              "flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-sm text-left last:border-b-0 transition-colors",
+                              projectId === p.id ? "bg-accent font-medium" : "hover:bg-accent/50"
                             )}
                           >
-                            <span
-                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: p.colour }}
-                            />
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: p.colour }} />
                             <span className="truncate">{p.name}</span>
                             {projectId === p.id && (
-                              <span className="ml-auto text-xs text-muted-foreground">✓</span>
+                              <span className="ml-auto text-xs text-primary font-semibold">✓</span>
                             )}
                           </button>
                         ))
@@ -264,49 +242,34 @@ export function EntryModal({
 
               {/* Logged time */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Logged time</label>
+                <label className="text-sm font-medium">Logged time</label>
                 <HoursInput value={hours} onChange={setHours} disabled={readonly} />
               </div>
 
               {/* Tags */}
               {tags.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Tags</label>
+                  <label className="text-sm font-medium">Tag</label>
                   <TagSelector tags={tags} selected={tagIds} onChange={setTagIds} disabled={readonly} />
                 </div>
               )}
 
               {/* Copy / Move / Delete */}
               {existing && !readonly && (
-                <div className="flex gap-2 pt-2 border-t border-border">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-muted-foreground"
-                    onClick={() => setDatePrompt("copy")}
-                  >
+                <div className="flex gap-2 border-t border-border pt-3">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDatePrompt("copy")}>
                     <Copy className="h-3.5 w-3.5" /> Copy to…
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-muted-foreground"
-                    onClick={() => setDatePrompt("move")}
-                  >
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDatePrompt("move")}>
                     <ArrowRight className="h-3.5 w-3.5" /> Move to…
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-destructive hover:text-destructive ml-auto"
+                    variant="ghost" size="sm"
+                    className="ml-auto gap-1.5 text-destructive hover:text-destructive"
                     disabled={deleting}
                     onClick={handleDelete}
                   >
-                    {deleting ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3.5 w-3.5" />
-                    )}
+                    {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     Delete
                   </Button>
                 </div>
@@ -329,7 +292,7 @@ export function EntryModal({
             )}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

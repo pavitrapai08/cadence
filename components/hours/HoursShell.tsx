@@ -179,19 +179,19 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      {/* Top bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* View toggle */}
-        <div className="flex rounded-md border border-border overflow-hidden text-sm">
+      {/* Toolbar */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {/* View toggle — pill style */}
+        <div className="flex items-center rounded-lg bg-muted p-0.5 text-sm">
           {(["day", "week", "month"] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               className={cn(
-                "px-3 py-1.5 capitalize transition-colors",
+                "rounded-md px-3 py-1 capitalize font-medium transition-all",
                 view === v
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {v}
@@ -200,29 +200,29 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(-1)}>
+        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-background">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-l-lg rounded-r-none" onClick={() => navigate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[140px] text-center text-sm font-medium">
+          <span className="min-w-[130px] px-1 text-center text-sm font-medium">
             {view === "month"
               ? format(currentWeek, "MMMM yyyy")
               : weekRangeLabel(currentWeek)}
           </span>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate(1)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-r-lg rounded-l-none" onClick={() => navigate(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         {!isCurrentWeek && (
-          <Button variant="ghost" size="sm" onClick={goToday} className="text-xs">
+          <Button variant="outline" size="sm" onClick={goToday} className="h-8 text-xs">
             Today
           </Button>
         )}
 
         {/* Week total */}
         {view === "week" && weekTotal > 0 && (
-          <span className="ml-auto text-sm text-muted-foreground">
+          <span className="ml-auto rounded-md bg-primary/10 px-2.5 py-1 text-sm font-semibold text-primary">
             {formatHours(weekTotal)} this week
           </span>
         )}
