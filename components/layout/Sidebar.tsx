@@ -5,20 +5,22 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { visibleNav, isActive } from "./nav-items";
 
-/** Desktop / tablet left sidebar (hidden on mobile — see MobileNav). */
 export function Sidebar({ role }: { role: string | null }) {
   const pathname = usePathname();
   const items = visibleNav(role);
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r bg-card md:flex">
-      <div className="flex h-16 items-center gap-2 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand font-bold text-brand-foreground">
+    <aside className="hidden w-56 shrink-0 flex-col bg-slate-900 md:flex">
+      {/* Logo */}
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand font-bold text-sm text-brand-foreground shadow-sm">
           C
         </div>
-        <span className="text-lg font-semibold">Cadence</span>
+        <span className="text-[15px] font-semibold tracking-tight text-white">Cadence</span>
       </div>
-      <nav className="flex flex-col gap-1 px-3 py-2">
+
+      {/* Nav */}
+      <nav className="flex flex-1 flex-col gap-0.5 px-3 py-3">
         {items.map((item) => {
           const active = isActive(pathname, item);
           const Icon = item.icon;
@@ -27,21 +29,34 @@ export function Sidebar({ role }: { role: string | null }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 active
                   ? item.brand
-                    ? "bg-brand/10 text-brand"
-                    : "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
-                item.brand && !active && "text-brand/80 hover:text-brand",
+                    ? "bg-brand/20 text-emerald-300"
+                    : "bg-white/10 text-white"
+                  : item.brand
+                  ? "text-emerald-400/70 hover:bg-brand/10 hover:text-emerald-300"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-colors",
+                  active
+                    ? item.brand ? "text-emerald-300" : "text-white"
+                    : item.brand ? "text-emerald-400/70 group-hover:text-emerald-300" : "text-slate-500 group-hover:text-slate-300"
+                )}
+              />
               {item.label}
             </Link>
           );
         })}
       </nav>
+
+      {/* Bottom separator */}
+      <div className="border-t border-slate-800 px-4 py-3">
+        <p className="text-[11px] text-slate-600">DecisionFoundry</p>
+      </div>
     </aside>
   );
 }

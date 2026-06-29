@@ -12,19 +12,19 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
+    --primary: oklch(0.42 0.13 152);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.97 0.008 152);
+    --secondary-foreground: oklch(0.25 0.05 152);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --accent: oklch(0.97 0.01 152);
+    --accent-foreground: oklch(0.25 0.07 152);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: 210 40% 98%;
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --ring: oklch(0.42 0.13 152);
     /* Cadence brand: AI tab green + warning amber */
     --brand: 152 60% 28%;
     --brand-foreground: 0 0% 100%;

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface TagSelectorProps {
   tags: Tag[];
+  /** Single-select: array will always have 0 or 1 item. */
   selected: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
@@ -17,9 +18,10 @@ export function TagSelector({ tags, selected, onChange, disabled }: TagSelectorP
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const selectedId = selected[0] ?? null;
+  const selectedTag = tags.find((t) => t.id === selectedId) ?? null;
   const requiredTags = tags.filter((t) => t.is_required);
-  const missingRequired = requiredTags.filter((t) => !selected.includes(t.id));
-  const selectedTags = tags.filter((t) => selected.includes(t.id));
+  const missingRequired = requiredTags.filter((t) => t.id !== selectedId);
   const filteredTags = tags.filter((t) =>
     t.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -35,23 +37,23 @@ export function TagSelector({ tags, selected, onChange, disabled }: TagSelectorP
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [open]);
 
-  function toggle(id: string) {
+  function select(id: string) {
     if (disabled) return;
-    onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
+    // Clicking the already-selected tag deselects it
+    onChange(selectedId === id ? [] : [id]);
+    setOpen(false);
+    setSearch("");
   }
 
-  function removePill(id: string, e: React.MouseEvent) {
+  function clear(e: React.MouseEvent) {
     e.stopPropagation();
     if (disabled) return;
-    onChange(selected.filter((s) => s !== id));
+    onChange([]);
   }
 
   if (tags.length === 0) {
     return <p className="text-sm text-muted-foreground">No tags for this project.</p>;
   }
-
-  const visiblePills = selectedTags.slice(0, 3);
-  const extraCount = selectedTags.length - 3;
 
   return (
     <div ref={containerRef} className="relative">
@@ -64,38 +66,31 @@ export function TagSelector({ tags, selected, onChange, disabled }: TagSelectorP
         onKeyDown={(e) => e.key === "Enter" && !disabled && setOpen((o) => !o)}
         onClick={() => !disabled && setOpen((o) => !o)}
         className={cn(
-          "flex min-h-[38px] w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1.5 cursor-pointer select-none",
+          "flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 cursor-pointer select-none",
           disabled && "opacity-50 cursor-not-allowed pointer-events-none",
           open && "ring-2 ring-ring"
         )}
       >
-        {selectedTags.length === 0 && (
-          <span className="text-sm text-muted-foreground">Choose tags…</span>
-        )}
-        {visiblePills.map((tag) => (
-          <span
-            key={tag.id}
-            className="flex items-center gap-0.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-          >
-            {tag.name}
+        {selectedTag ? (
+          <>
+            <span className="flex-1 truncate text-sm">{selectedTag.name}</span>
             {!disabled && (
               <button
                 type="button"
                 tabIndex={-1}
-                onClick={(e) => removePill(tag.id, e)}
-                className="ml-0.5 rounded-full hover:text-destructive"
+                onClick={clear}
+                className="shrink-0 rounded text-muted-foreground hover:text-destructive"
               >
-                <X className="h-2.5 w-2.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
-          </span>
-        ))}
-        {extraCount > 0 && (
-          <span className="text-xs text-muted-foreground">+{extraCount} more</span>
+          </>
+        ) : (
+          <span className="flex-1 text-sm text-muted-foreground">Choose a tag…</span>
         )}
         <ChevronDown
           className={cn(
-            "ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
             open && "rotate-180"
           )}
         />
@@ -115,41 +110,39 @@ export function TagSelector({ tags, selected, onChange, disabled }: TagSelectorP
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
-          <div className="max-h-[200px] overflow-y-auto py-1">
+          <div className="max-h-[220px] overflow-y-auto py-1">
             {filteredTags.length === 0 ? (
               <p className="px-3 py-2 text-sm text-muted-foreground">No tags found.</p>
             ) : (
               filteredTags.map((tag) => {
-                const isSelected = selected.includes(tag.id);
+                const isSelected = tag.id === selectedId;
                 return (
                   <button
                     key={tag.id}
                     type="button"
-                    onClick={() => toggle(tag.id)}
+                    onClick={() => select(tag.id)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 px-3 py-1.5 text-sm transition-colors hover:bg-accent",
-                      isSelected && "text-primary"
+                      "flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors hover:bg-accent",
+                      isSelected && "text-primary font-medium"
                     )}
                   >
+                    {/* Radio circle */}
                     <span
                       className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                        isSelected ? "bg-primary border-primary" : "border-input"
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                        isSelected
+                          ? "border-primary bg-primary"
+                          : "border-input"
                       )}
                     >
                       {isSelected && (
-                        <svg className="h-3 w-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
                       )}
                     </span>
                     {tag.name}
+                    {tag.is_required && !isSelected && (
+                      <span className="ml-auto text-[10px] text-amber-500 font-medium">Required</span>
+                    )}
                   </button>
                 );
               })

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 interface WelcomeCardProps {
@@ -27,38 +27,39 @@ export function WelcomeCard({ onDismiss }: WelcomeCardProps) {
   }
 
   return (
-    <div className="relative mb-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+    <div className="relative mb-4 overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background p-5 shadow-sm">
       <button
         onClick={handleDismiss}
         disabled={dismissing}
-        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+        className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />
       </button>
-      <h3 className="mb-1 font-semibold">Welcome to Cadence!</h3>
-      <p className="mb-3 text-sm text-muted-foreground">
-        Get started in three steps:
-      </p>
-      <ol className="space-y-1 text-sm">
-        <li className="flex items-start gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-medium">
-            1
-          </span>
-          <span>Select a project from the dropdown in a new entry</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-medium">
-            2
-          </span>
-          <span>Add what you worked on</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-medium">
-            3
-          </span>
-          <span>Log your hours</span>
-        </li>
+
+      <div className="mb-3 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+          <Clock className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-foreground">Welcome to Cadence!</h3>
+          <p className="text-sm text-muted-foreground">Track the rhythm of your work.</p>
+        </div>
+      </div>
+
+      <ol className="space-y-2 text-sm">
+        {[
+          "Select a project from the entry panel",
+          "Add a note about what you worked on",
+          "Log your hours and save",
+        ].map((step, i) => (
+          <li key={i} className="flex items-center gap-3">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+              {i + 1}
+            </span>
+            <span className="text-muted-foreground">{step}</span>
+          </li>
+        ))}
       </ol>
     </div>
   );

@@ -29,40 +29,42 @@ export function EntryCard({
     <div
       onClick={onClick}
       className={cn(
-        "group relative flex cursor-pointer items-start gap-2 rounded-md border border-border bg-card px-2.5 py-2 text-sm shadow-sm transition-shadow hover:shadow-md",
-        isDragging && "opacity-50 shadow-lg ring-2 ring-primary/40"
+        "group relative flex cursor-pointer items-stretch gap-0 overflow-hidden rounded-md border border-border bg-card shadow-sm transition-all hover:shadow-md hover:border-border/80",
+        isDragging && "opacity-60 shadow-lg ring-2 ring-primary/40 rotate-1"
       )}
     >
-      {/* project colour stripe */}
-      <div
-        className="mt-0.5 h-3 w-1 shrink-0 rounded-full"
-        style={{ backgroundColor: colour }}
-      />
+      {/* Project colour stripe — 3px left accent */}
+      <div className="w-[3px] shrink-0" style={{ backgroundColor: colour }} />
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium leading-tight">
-          {project?.name ?? "Unknown project"}
-        </p>
-        {note && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{note}</p>
-        )}
-      </div>
+      <div className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium leading-tight text-foreground">
+            {project?.name ?? "Unknown project"}
+          </p>
+          {note && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{note}</p>
+          )}
+        </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <span className="text-xs font-medium tabular-nums">
-          {formatHours(entry.hours)}
-        </span>
-        {locked ? (
-          <Lock className="h-3 w-3 text-amber-500" />
-        ) : (
-          <div
-            {...dragHandleProps}
-            onClick={(e) => e.stopPropagation()}
-            className="hidden cursor-grab text-muted-foreground group-hover:block active:cursor-grabbing"
+        <div className="flex shrink-0 items-center gap-1 pt-px">
+          <span
+            className="text-xs font-semibold tabular-nums"
+            style={{ color: colour }}
           >
-            <GripVertical className="h-3.5 w-3.5" />
-          </div>
-        )}
+            {formatHours(entry.hours)}
+          </span>
+          {locked ? (
+            <Lock className="h-3 w-3 text-amber-500" />
+          ) : (
+            <div
+              {...dragHandleProps}
+              onClick={(e) => e.stopPropagation()}
+              className="hidden cursor-grab text-muted-foreground/50 group-hover:block active:cursor-grabbing"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
