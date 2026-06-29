@@ -373,3 +373,29 @@ Tags: SOW's / Proposals · Pre Sales - Existing Business · Pre Sales - New Busi
 ## 17. Definition of done (every task)
 
 Scaffolded files ≤300 lines · lint + build clean · **unit tests pass for any new logic** · no secret in client bundle (gitleaks pre-commit clean) · RLS verified (positive + cross-user negative) · empty and loading states implemented · error states implemented · works on Vercel preview URL at 375/768/1280 · CLAUDE.md and phase outcomes updated.
+
+---
+
+## 18. Month locking
+
+When a calendar month ends, it is **automatically locked** — employees and managers cannot create, edit, or delete entries in that month. Only admins can unlock a month. This mirrors Timely's behaviour.
+
+**How it works (three layers):**
+1. **DB trigger** `check_entry_month_not_locked()` on `time_entries` — fires `BEFORE INSERT/UPDATE/DELETE`. If the entry's month has `is_locked = true` in `month_locks`, it raises `'month_locked: …'`. This is the real security boundary.
+   - **Exception:** `submit_week` (status-only UPDATE — hours/notes/tags/project/date unchanged) passes through so employees can still submit timesheets in locked months.
+2. **pg_cron auto-lock** — `auto_lock_previous_month()` runs on the 1st of every month at 00:05 UTC. It inserts the previous month into `month_locks` with `is_locked = true`. Uses `ON CONFLICT DO NOTHING` so a manual admin unlock is never overwritten.
+3. **Client utility** `lib/month-lock.ts` — `isMonthLocked(date, lockedMonths)` lets the calendar disable UI controls without a round-trip.
+
+**Table:** `month_locks (year int, month int PK, is_locked boolean, locked_by, locked_at, unlocked_by, unlocked_at)`
+
+**API route:** `GET /api/admin/month-locks` (all authenticated — calendar reads it) · `PATCH /api/admin/month-locks` (admin only — toggles `is_locked`).
+
+**RLS:** all authenticated users can SELECT. Only admins can INSERT/UPDATE/DELETE (the `auto_lock_previous_month` function is `SECURITY DEFINER` so it bypasses RLS).
+
+**UI behaviour (Phase 1):**
+- Calendar entries in a locked month show a lock icon and are non-draggable.
+- Clicking an entry in a locked month opens a read-only view (no edit/delete).
+- A banner appears at the top of a locked month: *"[Month YYYY] is locked. Contact your admin to unlock."*
+- Admin Account tab → Workspace → Month Locks shows the last 12 months with lock/unlock toggles.
+
+**Backfill:** migration 0003 locks all months from 2024-01 through last month on first apply (safe to re-run, `ON CONFLICT DO NOTHING`).

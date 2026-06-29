@@ -54,6 +54,16 @@
 
 **Definition of done:** migrations applied; seed (with is_billable) confirmed; OAuth DF-only working; pg_cron scheduled; first admin promoted.
 
+> **Post-Phase-0 addition — month locking (migration 0003):**
+> Added before Phase 1 so the Hours tab is built with locking already enforced.
+> - `month_locks` table + `check_entry_month_not_locked` trigger (DB-level enforcement)
+> - `auto_lock_previous_month` pg_cron job (1st of every month, 00:05 UTC)
+> - Backfill: months from 2024-01 through last month locked on migration apply
+> - `lib/month-lock.ts` — `isMonthLocked(date, lockedMonths)` client utility
+> - `GET/PATCH /api/admin/month-locks` — read (all auth) / toggle (admin only)
+> - 10 new Vitest tests — 28/28 passing, build clean
+> See `CLAUDE.md §18` for the full specification.
+
 ---
 
 ## Phase 1 — Hours tab: calendar + time entry CRUD + drag and drop
@@ -74,8 +84,9 @@
 5. Build `DraggableEntry.tsx` + `DroppableDay.tsx` (@dnd-kit). On drop → `PATCH /api/entries/:id` date.
 6. Build `WelcomeCard.tsx` — shown if zero entries AND `dismissed_welcome=false`; dismissing PATCHes the user row.
 7. Build `/api/entries` routes (GET, POST, PATCH, DELETE). POST/PATCH **validate** that the project is in the user's `project_members` AND every `tag_id` belongs to the project's `tag_group_id`. PATCH/DELETE return 403 if entry is submitted.
-8. All entry/calendar components `'use client'`.
-9. Every component: loading skeleton · empty state · error toast.
+8. **Month-lock enforcement in the UI** — fetch `GET /api/admin/month-locks` on Hours mount; pass `buildLockedSet(locks)` down. For any date in a locked month: entry cards are non-draggable, "+ New" is hidden, clicking an entry opens read-only view (no edit/delete buttons), and a `MonthLockedBanner` appears at the top of that month. The DB trigger is the real boundary; the UI is a first-class citizen.
+9. All entry/calendar components `'use client'`.
+10. Every component: loading skeleton · empty state · error toast.
 
 **Acceptance criteria**
 - Log an entry with project, hours, tags, notes
@@ -100,8 +111,10 @@
 - **[CC]** RLS: cannot read another user's entries
 - **[YOU]** Responsive: week at 375px shows 3 days, range + total in top bar ✅
 - **[YOU]** Welcome card: shown first login; dismissed and not shown again after reload ✅
+- **[YOU]** Locked month: "+ New" hidden, entry cards non-draggable, read-only modal, banner shown ✅
+- **[CC]** DB trigger blocks a direct POST to `/api/entries` for a locked month with `month_locked` error
 
-**Definition of done:** full entry lifecycle on deployed URL; project visibility + tag/group validation enforced.
+**Definition of done:** full entry lifecycle on deployed URL; project visibility + tag/group validation enforced; month-lock UI and DB enforcement both verified.
 
 ---
 

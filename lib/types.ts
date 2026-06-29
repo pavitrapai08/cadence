@@ -1,0 +1,68 @@
+// ── Database row shapes ───────────────────────────────────────────────────────
+
+export interface TimeEntry {
+  id: string;
+  user_id: string;
+  project_id: string;
+  date: string; // "YYYY-MM-DD"
+  hours: number;
+  raw_notes: string | null;
+  ai_description: string | null;
+  tag_ids: string[];
+  status: "draft" | "submitted";
+  timesheet_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Tag {
+  id: string;
+  tag_group_id: string;
+  name: string;
+  is_billable: boolean;
+  is_required: boolean;
+  sort_order: number;
+}
+
+export interface TagGroup {
+  id: string;
+  name: string;
+  tags: Tag[];
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  colour: string;
+  external_id: string | null;
+  tag_group_id: string | null;
+  tag_group: TagGroup | null;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: "employee" | "manager" | "admin";
+  manager_id: string | null;
+  capacity_hours: number;
+  timezone: string;
+  dismissed_welcome: boolean;
+  is_active: boolean;
+}
+
+export interface MonthLockRow {
+  year: number;
+  month: number;
+  is_locked: boolean;
+}
+
+// ── API response envelope ─────────────────────────────────────────────────────
+
+export interface ApiError {
+  code: string;
+  message: string;
+}
+
+export type ApiResponse<T> = { data: T } | { error: ApiError };
