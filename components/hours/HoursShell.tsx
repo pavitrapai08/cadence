@@ -25,6 +25,20 @@ import { cn } from "@/lib/utils";
 
 type ViewMode = "day" | "week" | "month";
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function getFirstName(user: UserProfile): string {
+  if (user.full_name) return user.full_name.split(" ")[0];
+  const localPart = user.email.split("@")[0];
+  const firstSegment = localPart.split(/[._-]/)[0];
+  return firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
+}
+
 interface HoursShellProps {
   initialEntries: TimeEntry[];
   projects: Project[];
@@ -179,6 +193,16 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      {/* Personal greeting */}
+      <div className="-mx-4 -mt-4 mb-5 border-b border-[#F0F4F0] bg-white px-4 py-4 md:-mx-6 md:-mt-6 md:px-6">
+        <h1 className="text-lg font-semibold text-[#111]">
+          {getGreeting()}, {getFirstName(user)} 👋
+        </h1>
+        <p className="mt-0.5 text-sm text-[#6B7280]">
+          {weekRangeLabel(currentWeek)} &middot; {weekTotal > 0 ? `${formatHours(weekTotal)} logged so far` : "No hours logged yet"}
+        </p>
+      </div>
+
       {/* Toolbar */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {/* View toggle — pill style */}

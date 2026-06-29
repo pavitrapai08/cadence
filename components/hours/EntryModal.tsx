@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Trash2, Copy, ArrowRight, Lock, Search } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Loader2, Sparkles, Trash2, Copy, ArrowRight, Lock, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HoursInput } from "./HoursInput";
@@ -122,25 +116,37 @@ export function EntryModal({
   const title = state.mode === "create" ? "New entry" : state.mode === "readonly" ? "Entry" : "Edit entry";
 
   return (
-    <Sheet open onOpenChange={onClose}>
-      <SheetContent
-        side="right"
-        showCloseButton={false}
-        className="flex flex-col gap-0 p-0 sm:max-w-[400px]"
+    /* Full-screen backdrop */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
+      {/* Modal card */}
+      <div
+        className="relative flex max-h-[90vh] w-[520px] max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <SheetHeader className="shrink-0 border-b border-border px-5 py-4 pr-12">
-          <SheetTitle className="text-base font-semibold leading-tight">{title}</SheetTitle>
-          <p className="text-sm text-muted-foreground">{dateLabel}</p>
-          {readonly && (
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-600">
-              <Lock className="h-3 w-3" /> Locked or submitted — read only.
-            </div>
-          )}
-        </SheetHeader>
+        <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-6 py-5">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+            <p className="mt-0.5 text-xs text-gray-500">{dateLabel}</p>
+            {readonly && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
+                <Lock className="h-3 w-3" /> Locked or submitted — read only.
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-4 rounded-md p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {datePrompt ? (
             <div className="space-y-3">
               <p className="text-sm font-medium">
@@ -150,7 +156,7 @@ export function EntryModal({
                 type="date"
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
               />
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setDatePrompt(null)}>Back</Button>
@@ -160,10 +166,10 @@ export function EntryModal({
               </div>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="flex flex-col gap-4">
               {/* Notes */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Notes</label>
+                <label className="text-sm font-medium text-gray-700">Notes</label>
                 <Textarea
                   placeholder="What did you work on?"
                   value={rawNotes}
@@ -173,7 +179,7 @@ export function EntryModal({
                   className="resize-none"
                 />
                 {aiDescription && (
-                  <p className="rounded-md bg-muted px-3 py-2 text-sm italic text-foreground/80">
+                  <p className="rounded-md bg-gray-50 px-3 py-2 text-sm italic text-gray-600">
                     {aiDescription}
                   </p>
                 )}
@@ -182,7 +188,7 @@ export function EntryModal({
                     type="button"
                     disabled
                     title="AI polish coming in Phase 2"
-                    className="flex items-center gap-1 text-xs text-muted-foreground opacity-50 cursor-not-allowed"
+                    className="flex cursor-not-allowed items-center gap-1 text-xs text-gray-400 opacity-50"
                   >
                     <Sparkles className="h-3 w-3" /> Polish with AI
                   </button>
@@ -191,31 +197,31 @@ export function EntryModal({
 
               {/* Project */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Project</label>
+                <label className="text-sm font-medium text-gray-700">Project</label>
                 {readonly ? (
                   <div className="flex items-center gap-2 text-sm">
                     {selectedProject && (
-                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: selectedProject.colour }} />
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: selectedProject.colour }} />
                     )}
                     <span>{selectedProject?.name ?? "Unknown"}</span>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="overflow-hidden rounded-lg border border-gray-200">
                     {projects.length > 5 && (
-                      <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-3 py-2">
-                        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2">
+                        <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                         <input
                           type="text"
                           placeholder="Search projects…"
                           value={projectSearch}
                           onChange={(e) => setProjectSearch(e.target.value)}
-                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
                         />
                       </div>
                     )}
-                    <div className="max-h-[200px] overflow-y-auto">
+                    <div className="max-h-[180px] overflow-y-auto">
                       {filteredProjects.length === 0 ? (
-                        <p className="px-3 py-2 text-sm text-muted-foreground">No projects found.</p>
+                        <p className="px-3 py-2 text-sm text-gray-400">No projects found.</p>
                       ) : (
                         filteredProjects.map((p) => (
                           <button
@@ -223,14 +229,14 @@ export function EntryModal({
                             type="button"
                             onClick={() => handleProjectSelect(p.id)}
                             className={cn(
-                              "flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-sm text-left last:border-b-0 transition-colors",
-                              projectId === p.id ? "bg-accent font-medium" : "hover:bg-accent/50"
+                              "flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 transition-colors",
+                              projectId === p.id ? "bg-green-50 font-medium" : "hover:bg-gray-50"
                             )}
                           >
-                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: p.colour }} />
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.colour }} />
                             <span className="truncate">{p.name}</span>
                             {projectId === p.id && (
-                              <span className="ml-auto text-xs text-primary font-semibold">✓</span>
+                              <span className="ml-auto text-xs font-semibold text-[#1B6B3A]">✓</span>
                             )}
                           </button>
                         ))
@@ -242,25 +248,25 @@ export function EntryModal({
 
               {/* Logged time */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Logged time</label>
+                <label className="text-sm font-medium text-gray-700">Logged time</label>
                 <HoursInput value={hours} onChange={setHours} disabled={readonly} />
               </div>
 
               {/* Tags */}
               {tags.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Tag</label>
+                  <label className="text-sm font-medium text-gray-700">Tag</label>
                   <TagSelector tags={tags} selected={tagIds} onChange={setTagIds} disabled={readonly} />
                 </div>
               )}
 
               {/* Copy / Move / Delete */}
               {existing && !readonly && (
-                <div className="flex gap-2 border-t border-border pt-3">
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDatePrompt("copy")}>
+                <div className="flex gap-2 border-t border-gray-100 pt-3">
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500" onClick={() => setDatePrompt("copy")}>
                     <Copy className="h-3.5 w-3.5" /> Copy to…
                   </Button>
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => setDatePrompt("move")}>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-gray-500" onClick={() => setDatePrompt("move")}>
                     <ArrowRight className="h-3.5 w-3.5" /> Move to…
                   </Button>
                   <Button
@@ -280,19 +286,24 @@ export function EntryModal({
 
         {/* Footer */}
         {!datePrompt && (
-          <div className="shrink-0 flex justify-end gap-2 border-t border-border px-5 py-4">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-6 py-4">
             <Button variant="outline" onClick={onClose}>
               {readonly ? "Close" : "Cancel"}
             </Button>
             {!readonly && (
-              <Button disabled={saving || !projectId || hours <= 0} onClick={handleSave}>
-                {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              <button
+                disabled={saving || !projectId || hours <= 0}
+                onClick={handleSave}
+                className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-40"
+                style={{ backgroundColor: "#1B6B3A" }}
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Save entry
-              </Button>
+              </button>
             )}
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </div>
+    </div>
   );
 }

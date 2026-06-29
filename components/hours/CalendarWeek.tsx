@@ -93,30 +93,27 @@ export function CalendarWeek({
                 idx < days.length - 1 && "border-r border-border"
               )}
             >
-              {/* Day header — clean, no gray background */}
+              {/* Day header */}
               <div
                 className={cn(
-                  "select-none border-b border-border px-3 py-3",
+                  "select-none border-b border-[#F0F4F0] bg-white px-4 py-3",
                   today && "bg-primary/5"
                 )}
               >
                 <div className="flex items-start justify-between gap-1">
                   <div>
-                    <div className={cn(
-                      "text-[10px] font-semibold uppercase tracking-widest",
-                      today ? "text-primary" : "text-muted-foreground/70"
-                    )}>
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF]">
                       {format(day, "EEE")}
                     </div>
                     <div className={cn(
-                      "mt-0.5 text-2xl font-bold leading-none",
-                      today ? "text-primary" : "text-foreground"
+                      "mt-0.5 text-[28px] font-light leading-none",
+                      today ? "text-primary" : "text-[#111]"
                     )}>
                       {format(day, "d")}
                     </div>
                   </div>
                   {dailyTotal > 0 && (
-                    <span className="mt-0.5 text-[11px] font-semibold text-primary tabular-nums">
+                    <span className="mt-0.5 text-xs text-[#9CA3AF] tabular-nums">
                       {formatHours(dailyTotal)}
                     </span>
                   )}
