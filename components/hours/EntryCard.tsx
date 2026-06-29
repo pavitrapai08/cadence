@@ -29,25 +29,34 @@ export function EntryCard({
     <div
       onClick={onClick}
       className={cn(
-        "group relative flex cursor-pointer items-stretch gap-0 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md",
+        "group relative flex cursor-pointer items-stretch gap-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md",
         isDragging && "rotate-1 opacity-60 shadow-lg ring-2 ring-primary/40"
       )}
     >
-      {/* Project colour stripe */}
-      <div className="w-[3px] shrink-0" style={{ backgroundColor: colour }} />
+      {/* Project-tinted background layer */}
+      <div
+        className="absolute inset-0 opacity-[0.07]"
+        style={{ backgroundColor: colour }}
+      />
 
-      <div className="flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2">
+      {/* Project colour stripe */}
+      <div className="relative z-10 w-[3px] shrink-0" style={{ backgroundColor: colour }} />
+
+      <div className="relative z-10 flex min-w-0 flex-1 items-start gap-2 px-2.5 py-2.5">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium leading-tight text-gray-800">
+          <p className="truncate text-xs font-semibold leading-tight text-gray-800">
             {project?.name ?? "Unknown project"}
           </p>
           {note && (
-            <p className="mt-0.5 truncate text-[11px] text-[#9CA3AF]">{note}</p>
+            <p className="mt-0.5 truncate text-[11px] text-gray-500">{note}</p>
           )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1 pt-px">
-          <span className="text-[11px] tabular-nums text-[#6B7280]">
+          <span
+            className="text-[11px] font-semibold tabular-nums"
+            style={{ color: colour }}
+          >
             {formatHours(entry.hours)}
           </span>
           {locked ? (

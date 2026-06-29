@@ -193,14 +193,26 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      {/* Personal greeting */}
-      <div className="-mx-4 -mt-4 mb-5 border-b border-[#F0F4F0] bg-white px-4 py-4 md:-mx-6 md:-mt-6 md:px-6">
-        <h1 className="text-lg font-semibold text-[#111]">
-          {getGreeting()}, {getFirstName(user)} 👋
-        </h1>
-        <p className="mt-0.5 text-sm text-[#6B7280]">
-          {weekRangeLabel(currentWeek)} &middot; {weekTotal > 0 ? `${formatHours(weekTotal)} logged so far` : "No hours logged yet"}
-        </p>
+      {/* Personal greeting hero */}
+      <div className="-mx-4 -mt-4 mb-6 md:-mx-6 md:-mt-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-50/70 via-emerald-50/40 to-[#F8FAFB] px-4 py-7 md:px-6">
+          {/* Decorative accent dots */}
+          <div className="pointer-events-none absolute right-20 top-5 h-3 w-3 rounded-full bg-indigo-300/40" />
+          <div className="pointer-events-none absolute right-36 top-10 h-2 w-2 rounded-full bg-emerald-400/40" />
+          <div className="pointer-events-none absolute right-10 top-14 h-1.5 w-1.5 rounded-full bg-amber-400/50" />
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            {getGreeting()},{" "}
+            <span className="text-primary">{getFirstName(user)}</span>! 👋
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-500">
+            {weekRangeLabel(currentWeek)} &middot;{" "}
+            {weekTotal > 0 ? (
+              <><span className="font-medium text-primary">{formatHours(weekTotal)}</span> logged so far</>
+            ) : (
+              "Start logging your hours for this week"
+            )}
+          </p>
+        </div>
       </div>
 
       {/* Toolbar */}

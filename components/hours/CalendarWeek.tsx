@@ -75,9 +75,12 @@ export function CalendarWeek({
         <MonthLockedBanner key={b.key} label={b.label} />
       ))}
 
-      {/* Calendar grid — no outer border, just column separators */}
-      <div className="flex overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        {days.map((day, idx) => {
+      {/* Calendar grid — individual day cards with gaps */}
+      <div
+        className="grid gap-2.5"
+        style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+      >
+        {days.map((day) => {
           const dateStr = fmt(day, "yyyy-MM-dd");
           const dayEntries = byDate.get(dateStr) ?? [];
           const locked = isMonthLocked(day, lockedMonths);
@@ -89,15 +92,19 @@ export function CalendarWeek({
             <div
               key={dateStr}
               className={cn(
-                "flex min-w-0 flex-1 flex-col",
-                idx < days.length - 1 && "border-r border-border"
+                "flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white transition-all",
+                today
+                  ? "border-primary/30 shadow-[0_2px_16px_rgba(27,107,58,0.12)]"
+                  : "border-gray-100 shadow-sm hover:shadow-md"
               )}
             >
               {/* Day header */}
               <div
                 className={cn(
-                  "select-none border-b border-[#F0F4F0] bg-white px-4 py-3",
-                  today && "bg-primary/5"
+                  "select-none border-b px-4 py-3",
+                  today
+                    ? "border-primary/20 bg-gradient-to-br from-green-50 to-white"
+                    : "border-gray-100 bg-white"
                 )}
               >
                 <div className="flex items-start justify-between gap-1">
