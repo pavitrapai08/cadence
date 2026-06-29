@@ -8,7 +8,7 @@
 ## 1. What was built
 
 ### shadcn/ui components installed
-`button` · `input` · `textarea` · `select` · `dialog` · `badge` · `sonner` (toast).
+`button` · `input` · `textarea` · `select` · `dialog` · `badge` · `sonner` (toast) · `sheet`.
 Toaster wired into `app/layout.tsx` (top-right, richColors).
 
 ### Shared types
@@ -31,13 +31,13 @@ Month-locked errors surface as HTTP 409 with `code: "month_locked"`.
 | File | What it does |
 |---|---|
 | `HoursShell.tsx` | Client orchestrator — view toggle, week nav, DnD context, entry state, fetch |
-| `CalendarWeek.tsx` | Mon–Fri grid (Sat/Sun added only if entries exist); locked-month banner |
+| `CalendarWeek.tsx` | Full-width bordered column grid, Mon–Fri (Sat/Sun appear only if entries exist). Day headers stack day name / date / hours. No gap between columns — separated by thin borders. |
 | `CalendarDay.tsx` | Single-day view with drop zone |
-| `CalendarMonth.tsx` | Monthly grid with search (project name or note text) |
+| `CalendarMonth.tsx` | Monthly grid (Mon–Sun headers). Each cell shows date + hours; project chips per entry; hover reveals "+ New Entry". Search bar filters by project name or note. |
 | `DraggableEntry.tsx` | Entry card wrapped in @dnd-kit `useDraggable` |
-| `DroppableDay.tsx` | Day column wrapped in @dnd-kit `useDroppable` |
+| `DroppableDay.tsx` | Day column drop target — minimal tint on drag-over, no colored ring |
 | `EntryCard.tsx` | Project colour stripe, name, hours, lock icon / drag handle |
-| `EntryModal.tsx` | Create / edit / read-only dialog — project, hours, notes, tags, copy/move/delete |
+| `EntryModal.tsx` | Right-side **Sheet** panel (not a dialog) — slides in from the right, calendar stays visible. Project shown as a flat selectable list with colour dots. Hours, notes, tags, copy/move/delete inside the panel. |
 | `HoursInput.tsx` | Hours field + quick buttons (15m / 30m / 1h / 2h) |
 | `TagSelector.tsx` | Tag pills, multi-select, amber warning for required tags |
 | `WelcomeCard.tsx` | First-run card (shown when no entries + dismissed_welcome=false) |
@@ -46,15 +46,20 @@ Month-locked errors surface as HTTP 409 with `code: "month_locked"`.
 ### Hours page
 - [app/(app)/hours/page.tsx](../app/(app)/hours/page.tsx) — Server component. Parallel-fetches user profile, project memberships (with tags), month locks, and current week's entries. Passes to `HoursShell` as props (no loading flash on first paint).
 
+### Entry panel design decisions
+- **Sheet not Dialog** — the entry form slides in from the right so the calendar remains visible and in context. There is no backdrop overlay covering the calendar.
+- **Project as a list** — projects are displayed as flat tappable rows (colour dot + name + checkmark when selected) rather than a `<select>` dropdown. This matches Timely's UX and is faster to use on both desktop and mobile.
+- **No coloured hover backgrounds** — the droppable day highlight during drag is a barely-visible tint (`bg-primary/[0.04]`). Day columns have no background change on hover.
+
 ### Month-lock enforcement in UI
 - On page load, `buildLockedSet(lockRows)` creates a `Set<"YYYY-MM">`.
 - `isMonthLocked(date, lockedMonths)` gates every create/drag/edit action.
 - Drag to a locked month → toast error, no request sent.
-- Entry in a locked month → read-only modal opens (no edit/delete controls).
-- Month banner appears above the day columns in week view.
+- Entry in a locked month → read-only Sheet opens (no edit/delete controls, lock badge in header).
+- Month banner appears above the calendar in week/month views.
 
 ### "Polish with AI" placeholder
-The button is present in `EntryModal` but is `disabled` with tooltip "AI polish coming in Phase 2". No network call is made. Phase 2 will wire the streaming narrative route.
+The button is present in the entry panel but is `disabled` with tooltip "AI polish coming in Phase 2". No network call is made.
 
 ---
 
@@ -69,20 +74,25 @@ The button is present in `EntryModal` but is `disabled` with tooltip "AI polish 
 ### Functional checklist
 | Check | How |
 |---|---|
-| Project dropdown shows only your assigned projects | Open entry modal — only projects from `project_members` appear |
-| Tags load for the selected project | Change project — tag list updates, previous selection cleared |
-| Required tag (All Hands on Org Activity) shows amber warning | Select that project, do not select All Hands — warning appears but Save is not blocked |
+| Entry panel slides in from right | Click "+ New" on any day — Sheet slides in, calendar stays visible |
+| Project list shows only assigned projects | Only projects from `project_members` appear in the list |
+| Selecting a project highlights it (checkmark) | Click a project row — row gets accent background + ✓ |
+| Tags load for the selected project | Change project — tag pills update, previous selection cleared |
+| Required tag (All Hands on Org Activity) shows amber warning | Select that project, do not select All Hands — warning appears, Save not blocked |
 | Create entry → persists after reload | Log an entry, reload — it's there |
-| Edit entry → changes saved | Click existing entry, edit hours/notes, save — updated |
-| Delete entry → gone after reload | Three-dot → Delete — gone |
-| Copy to date → two entries on different days | Copy → pick another date — original + copy both exist |
-| Move to date → entry on new day only | Move → original gone, appears on target date |
+| Edit entry → changes saved | Click existing entry card, edit hours/notes, save — updated |
+| Delete entry | Open entry panel → Delete — entry gone |
+| Copy to date → two entries on different days | Copy to… → pick another date — original + copy both exist |
+| Move to date → entry on new day only | Move to… → original gone, appears on target date |
 | Drag entry Mon→Thu | Drag card between columns — persists on reload |
-| Drag to locked month → toast, no move | Drag to a column in a locked month — toast fires, entry stays |
-| Locked month: no "+ New", lock icon on cards | Navigate to a previous month |
-| Week navigation Mon start | `<` / `>` — week always Monday–Sunday |
+| Drag to locked month → toast, no move | Drag to a locked day — toast fires, entry stays |
+| Locked month: no "+ New", read-only panel | Navigate to a previous month — lock icon on cards, panel opens read-only |
+| Week column grid: no background on hover | Hover over an empty column — no colour change |
+| Day headers: day / date / hours stacked | Week view shows e.g. MON / 22 / 0h in each column header |
+| Week navigation Monday start | `<` / `>` — week always starts Monday |
 | Today button returns to current week | Navigate away, click Today |
-| Month view search | Type a project name → filters entries |
+| Month view search | Type a project name → only matching entries shown |
+| Month cells show "+ New Entry" on hover | Hover over an empty cell in month view |
 | Welcome card shown first time | New account (zero entries, dismissed_welcome=false) → card shown; dismiss → gone on reload |
 
 ### API smoke tests (curl / Postman)
@@ -117,7 +127,7 @@ PATCH /api/admin/month-locks   { "year":2026, "month":5, "is_locked":false }
 ## 4. Next: Phase 2 — AI narrative + timesheet submission
 
 - `POST /api/ai/narrative` — streaming one-sentence description.
-- "Polish with AI" wired into `EntryModal` with Accept / Edit / Regenerate.
+- "Polish with AI" wired into entry panel with Accept / Edit / Regenerate.
 - `SubmitWeekButton` + `MissingDaysModal` + `SubmittedBadge`.
 - `submit_week()` RPC called from a new `/api/timesheets/submit` route.
 - In-app `timesheet_submitted` notification appears in the bell.
