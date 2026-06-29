@@ -1,0 +1,14 @@
+# Cadence pre-commit — secret scan (gitleaks)
+# Blocks commits that contain potential secrets. If gitleaks is not installed,
+# the hook warns but does not block (install it to enforce — see docs/PHASE_0.md).
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner
+  if [ $? -ne 0 ]; then
+    echo "✖ gitleaks found a potential secret — commit aborted."
+    exit 1
+  fi
+else
+  echo "⚠ gitleaks not installed — skipping secret scan."
+  echo "  Install to enforce: winget install gitleaks  (or see github.com/gitleaks/gitleaks)"
+fi
