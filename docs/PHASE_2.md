@@ -93,10 +93,11 @@ Replaces the Phase 1 disabled "Polish with AI" placeholder. States:
 - Week toolbar: replaces the standalone `{formatHours(weekTotal)} this week` span with a flex row that includes both the total and either `<SubmittedBadge />` or `<SubmitWeekButton />`
 - Navigating to another week re-fetches entries from DB — `isWeekSubmitted` resolves correctly from the fetched data
 
-**Behaviour per CLAUDE.md §10:**
-- Submitted week entries become read-only (modal opens in `readonly` mode because `status === 'submitted'`)
+**Behaviour per CLAUDE.md §10 (and the submit-as-status-only decision from Phase 2):**
+- Submission is a **status badge, not a lock** — `status: 'submitted'` is a tracking indicator only. Entries remain fully editable and draggable until the month auto-locks at month end.
 - Submit button is replaced by the `SubmittedBadge` immediately after submit
 - Notification is created server-side by `submit_week` RPC
+- `openEntry()` in `HoursShell` gates `readonly` on month lock only — **never on `status === 'submitted'`**
 
 ---
 
@@ -115,7 +116,7 @@ Replaces the Phase 1 disabled "Polish with AI" placeholder. States:
 - Increments unread badge
 
 **"Mark all read":**
-- Calls `supabase.from('notifications').update({ read: true }).eq('user_id', uid).eq('read', false)`
+- Calls `supabase.from('notifications').update({ is_read: true }).eq('user_id', uid).eq('is_read', false)`
 - Optimistically updates local state
 - Button only shown when `unread > 0`
 

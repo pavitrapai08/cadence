@@ -58,6 +58,47 @@ export interface MonthLockRow {
   is_locked: boolean;
 }
 
+// ── Projects tab ──────────────────────────────────────────────────────────────
+
+export interface Client {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+/** Full project row — used in the Projects tab and admin forms. */
+export interface ProjectFull {
+  id: string;
+  name: string;
+  colour: string;
+  external_id: string | null;
+  description: string | null;
+  budget_hours: number | null;
+  is_active: boolean;
+  client_id: string | null;
+  client: Client | null;
+  tag_group_id: string | null;
+  tag_group: { id: string; name: string } | null;
+}
+
+export interface ProjectStats {
+  totalHours: number;
+  thisWeekHours: number;
+  thisMonthHours: number;
+  billableHours: number;
+  nonBillableHours: number;
+  lastFiveWeeks: { weekStart: string; hours: number }[];
+  tagUsage: { tagId: string; tagName: string; hours: number }[];
+}
+
+/** Minimal user shape used in member assignment lists. */
+export interface UserBasic {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: "employee" | "manager" | "admin";
+}
+
 // ── API response envelope ─────────────────────────────────────────────────────
 
 export interface ApiError {

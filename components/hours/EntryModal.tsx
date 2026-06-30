@@ -134,7 +134,7 @@ export function EntryModal({
             <p className="mt-0.5 text-xs text-gray-500">{dateLabel}</p>
             {readonly && (
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600">
-                <Lock className="h-3 w-3" /> Locked or submitted — read only.
+                <Lock className="h-3 w-3" /> This month is locked — read only.
               </div>
             )}
           </div>
