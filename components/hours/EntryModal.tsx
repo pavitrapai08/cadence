@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HoursInput } from "./HoursInput";
 import { TagSelector } from "./TagSelector";
+import { AIPolishSection } from "./AIPolishSection";
 import { TimeEntry, Project } from "@/lib/types";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,7 @@ export function EntryModal({
   const [projectId, setProjectId] = useState(existing?.project_id ?? "");
   const [hours, setHours] = useState(existing?.hours ?? 0);
   const [rawNotes, setRawNotes] = useState(existing?.raw_notes ?? "");
-  const [aiDescription] = useState(existing?.ai_description ?? "");
+  const [aiDescription, setAiDescription] = useState(existing?.ai_description ?? "");
   const [tagIds, setTagIds] = useState<string[]>(existing?.tag_ids ?? []);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -179,19 +180,18 @@ export function EntryModal({
                   className="resize-none"
                 />
                 {aiDescription && (
-                  <p className="rounded-md bg-gray-50 px-3 py-2 text-sm italic text-gray-600">
-                    {aiDescription}
-                  </p>
+                  <div className="flex items-start gap-1.5 rounded-lg bg-emerald-50 px-3 py-2">
+                    <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#1B6B3A]" />
+                    <p className="text-sm italic text-gray-700">{aiDescription}</p>
+                  </div>
                 )}
                 {!readonly && (
-                  <button
-                    type="button"
-                    disabled
-                    title="AI polish coming in Phase 2"
-                    className="flex cursor-not-allowed items-center gap-1 text-xs text-gray-400 opacity-50"
-                  >
-                    <Sparkles className="h-3 w-3" /> Polish with AI
-                  </button>
+                  <AIPolishSection
+                    rawNotes={rawNotes}
+                    projectName={selectedProject?.name ?? ""}
+                    onAccept={setAiDescription}
+                    disabled={saving}
+                  />
                 )}
               </div>
 

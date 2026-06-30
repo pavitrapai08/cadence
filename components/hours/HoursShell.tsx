@@ -20,6 +20,8 @@ import { CalendarDay } from "./CalendarDay";
 import { CalendarMonth } from "./CalendarMonth";
 import { EntryModal, ModalState } from "./EntryModal";
 import { WelcomeCard } from "./WelcomeCard";
+import { SubmitWeekButton } from "./SubmitWeekButton";
+import { SubmittedBadge } from "./SubmittedBadge";
 import { TimeEntry, Project, MonthLockRow, UserProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +57,8 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
   const [loading, setLoading] = useState(false);
 
   const lockedMonths = buildLockedSet(lockRows);
+  const isWeekSubmitted =
+    entries.length > 0 && entries.every((e) => e.status === "submitted");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -112,6 +116,10 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
 
   function handleDeleted(id: string) {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  function handleSubmitted() {
+    setEntries((prev) => prev.map((e) => ({ ...e, status: "submitted" as const })));
   }
 
   async function handleCopy(entry: TimeEntry, toDate: string) {
@@ -256,11 +264,24 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
           </Button>
         )}
 
-        {/* Week total */}
-        {view === "week" && weekTotal > 0 && (
-          <span className="ml-auto rounded-md bg-primary/10 px-2.5 py-1 text-sm font-semibold text-primary">
-            {formatHours(weekTotal)} this week
-          </span>
+        {/* Week total + submit */}
+        {view === "week" && (
+          <div className="ml-auto flex items-center gap-2">
+            {weekTotal > 0 && (
+              <span className="rounded-md bg-primary/10 px-2.5 py-1 text-sm font-semibold text-primary">
+                {formatHours(weekTotal)} this week
+              </span>
+            )}
+            {isWeekSubmitted ? (
+              <SubmittedBadge />
+            ) : (
+              <SubmitWeekButton
+                weekStart={currentWeek}
+                entries={entries}
+                onSubmitted={handleSubmitted}
+              />
+            )}
+          </div>
         )}
       </div>
 
