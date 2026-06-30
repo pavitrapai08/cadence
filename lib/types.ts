@@ -99,6 +99,69 @@ export interface UserBasic {
   role: "employee" | "manager" | "admin";
 }
 
+// ── People tab ────────────────────────────────────────────────────────────────
+
+export interface PersonWeeklyData {
+  weekStart: string;
+  hours: number;
+  billable: number;
+}
+
+export interface PersonUtilisation {
+  userId: string;
+  fullName: string | null;
+  email: string;
+  role: "employee" | "manager" | "admin";
+  capacityHours: number;
+  weeklyData: PersonWeeklyData[];
+  totalLogged: number;
+  totalBillable: number;
+  submittedThisWeek: boolean;
+  hasLoggedToday: boolean;
+}
+
+// ── Reports: Clients ──────────────────────────────────────────────────────────
+
+export interface ProjectWeeklyHours {
+  projectId: string;
+  projectName: string;
+  colour: string;
+  externalId: string | null;
+  totalHours: number;
+  weeklyHours: Record<string, number>; // weekStart ISO → hours
+}
+
+export interface ClientReportRow {
+  clientId: string;
+  clientName: string;
+  totalHours: number;
+  projects: ProjectWeeklyHours[];
+}
+
+// ── Reports: Timesheets ───────────────────────────────────────────────────────
+
+export interface TimesheetEntryRow {
+  id: string;
+  date: string;
+  userId: string;
+  userFullName: string | null;
+  userEmail: string;
+  projectId: string;
+  projectName: string;
+  projectColour: string;
+  hours: number;
+  note: string | null;
+  tagNames: string[];
+  status: "draft" | "submitted";
+}
+
+export interface TimesheetReportSummary {
+  entryCount: number;
+  peopleCount: number;
+  projectCount: number;
+  totalHours: number;
+}
+
 // ── API response envelope ─────────────────────────────────────────────────────
 
 export interface ApiError {

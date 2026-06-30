@@ -1,11 +1,7 @@
-import { PagePlaceholder } from "@/components/shared/PagePlaceholder";
+import { ClientReport } from "@/components/reports/ClientReport";
+
+export const dynamic = "force-dynamic";
 
 export default function ClientsReportPage() {
-  return (
-    <PagePlaceholder
-      title="Reports — Clients & Projects"
-      description="Hours by client and project, with CSV / PDF export."
-      phase="Phase 4"
-    />
-  );
+  return <ClientReport />;
 }
