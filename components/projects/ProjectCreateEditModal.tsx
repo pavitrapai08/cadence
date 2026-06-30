@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Plus, Trash2 } from "lucide-react";
+import { X, Loader2, Plus, Trash2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ProjectFull, Client, UserBasic } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { TagsManager } from "./TagsManager";
 
 const PRESET_COLOURS = [
   "#1B6B3A", "#2D9A5A", "#0891B2", "#0E7490",
@@ -25,6 +26,7 @@ interface Props {
 export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   const isEdit = !!existing;
 
+  // Core fields
   const [name, setName] = useState(existing?.name ?? "");
   const [clientId, setClientId] = useState(existing?.client_id ?? "");
   const [externalId, setExternalId] = useState(existing?.external_id ?? "");
@@ -34,12 +36,23 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   const [budgetHours, setBudgetHours] = useState(existing?.budget_hours?.toString() ?? "");
   const [saving, setSaving] = useState(false);
 
+  // Dropdown data
   const [clients, setClients] = useState<Client[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroupOption[]>([]);
   const [allUsers, setAllUsers] = useState<UserBasic[]>([]);
   const [members, setMembers] = useState<MemberUser[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [loadingMeta, setLoadingMeta] = useState(true);
+
+  // Inline client creation
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [savingClient, setSavingClient] = useState(false);
+
+  // Inline tag group creation
+  const [creatingTagGroup, setCreatingTagGroup] = useState(false);
+  const [newTagGroupName, setNewTagGroupName] = useState("");
+  const [savingTagGroup, setSavingTagGroup] = useState(false);
 
   useEffect(() => {
     async function fetchMeta() {
@@ -69,6 +82,52 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
     }
     fetchMeta();
   }, [isEdit, existing]);
+
+  async function handleCreateClient() {
+    if (!newClientName.trim()) return;
+    setSavingClient(true);
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newClientName.trim() }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setClients((prev) => [...prev, json.data].sort((a, b) => a.name.localeCompare(b.name)));
+        setClientId(json.data.id);
+        setCreatingClient(false);
+        setNewClientName("");
+        toast.success("Client created.");
+      } else {
+        toast.error(json.error?.message ?? "Failed to create client.");
+      }
+    } finally {
+      setSavingClient(false);
+    }
+  }
+
+  async function handleCreateTagGroup() {
+    if (!newTagGroupName.trim()) return;
+    setSavingTagGroup(true);
+    try {
+      const res = await fetch("/api/admin/tag-groups", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newTagGroupName.trim() }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setTagGroups((prev) => [...prev, json.data].sort((a, b) => a.name.localeCompare(b.name)));
+        setTagGroupId(json.data.id);
+        setCreatingTagGroup(false);
+        setNewTagGroupName("");
+        toast.success("Tag group created.");
+      } else {
+        toast.error(json.error?.message ?? "Failed to create tag group.");
+      }
+    } finally {
+      setSavingTagGroup(false);
+    }
+  }
 
   async function handleSave() {
     if (!name.trim()) { toast.error("Project name is required."); return; }
@@ -127,7 +186,7 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="relative flex max-h-[90vh] w-[560px] max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
+        className="relative flex max-h-[90vh] w-[580px] max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -160,13 +219,47 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">Client</label>
-                <select
-                  value={clientId} onChange={(e) => setClientId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  <option value="">— None —</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                {creatingClient ? (
+                  <div className="flex gap-1.5">
+                    <input
+                      autoFocus
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleCreateClient()}
+                      placeholder="Client name"
+                      className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button" onClick={handleCreateClient}
+                      disabled={!newClientName.trim() || savingClient}
+                      className="flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-white disabled:opacity-40"
+                    >
+                      {savingClient ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      type="button" onClick={() => { setCreatingClient(false); setNewClientName(""); }}
+                      className="flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={clientId} onChange={(e) => setClientId(e.target.value)}
+                      className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                    >
+                      <option value="">— None —</option>
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <button
+                      type="button" onClick={() => setCreatingClient(true)}
+                      className="shrink-0 flex items-center gap-0.5 text-xs text-primary hover:underline"
+                    >
+                      <Plus className="h-3 w-3" /> New
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">External ID</label>
@@ -182,13 +275,47 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">Tag group</label>
-                <select
-                  value={tagGroupId} onChange={(e) => setTagGroupId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
-                >
-                  <option value="">— None —</option>
-                  {tagGroups.map((tg) => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
-                </select>
+                {creatingTagGroup ? (
+                  <div className="flex gap-1.5">
+                    <input
+                      autoFocus
+                      value={newTagGroupName}
+                      onChange={(e) => setNewTagGroupName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleCreateTagGroup()}
+                      placeholder="Tag group name"
+                      className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                    />
+                    <button
+                      type="button" onClick={handleCreateTagGroup}
+                      disabled={!newTagGroupName.trim() || savingTagGroup}
+                      className="flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-white disabled:opacity-40"
+                    >
+                      {savingTagGroup ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      type="button" onClick={() => { setCreatingTagGroup(false); setNewTagGroupName(""); }}
+                      className="flex items-center justify-center rounded-lg border border-gray-200 px-3 py-2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={tagGroupId} onChange={(e) => setTagGroupId(e.target.value)}
+                      className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                    >
+                      <option value="">— None —</option>
+                      {tagGroups.map((tg) => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
+                    </select>
+                    <button
+                      type="button" onClick={() => setCreatingTagGroup(true)}
+                      className="shrink-0 flex items-center gap-0.5 text-xs text-primary hover:underline"
+                    >
+                      <Plus className="h-3 w-3" /> New
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">Budget (hours)</label>
@@ -200,6 +327,9 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
                 />
               </div>
             </div>
+
+            {/* Tags for selected group */}
+            {tagGroupId && <TagsManager tagGroupId={tagGroupId} />}
 
             {/* Description */}
             <div className="space-y-1.5">
