@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Plus, Trash2, Check } from "lucide-react";
+import { X, Loader2, Plus, Trash2, Check, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ProjectFull, Client, UserBasic } from "@/lib/types";
@@ -25,6 +25,12 @@ interface Props {
 
 export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   const isEdit = !!existing;
+
+  // After a new project is created, justCreated holds it so members can be added
+  const [justCreated, setJustCreated] = useState<ProjectFull | null>(null);
+  // The live project ID — either the pre-existing edit target or the just-created one
+  const projectId = existing?.id ?? justCreated?.id ?? null;
+  const showMembers = isEdit || !!justCreated;
 
   // Core fields
   const [name, setName] = useState(existing?.name ?? "");
@@ -83,6 +89,15 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
     fetchMeta();
   }, [isEdit, existing]);
 
+  // Closing after creation still registers the project in the parent list
+  function handleClose() {
+    if (justCreated && !isEdit) {
+      onSaved(justCreated);
+    } else {
+      onClose();
+    }
+  }
+
   async function handleCreateClient() {
     if (!newClientName.trim()) return;
     setSavingClient(true);
@@ -139,8 +154,8 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
         tagGroupId: tagGroupId || null,
         budgetHours: budgetHours ? parseFloat(budgetHours) : null,
       };
-      const res = isEdit
-        ? await fetch(`/api/projects/${existing!.id}`, {
+      const res = projectId
+        ? await fetch(`/api/projects/${projectId}`, {
             method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
           })
         : await fetch("/api/projects", {
@@ -148,8 +163,17 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
           });
       const json = await res.json();
       if (!res.ok) { toast.error(json.error?.message ?? "Failed to save."); return; }
-      toast.success(isEdit ? "Project updated." : "Project created.");
-      onSaved(json.data);
+
+      if (projectId) {
+        // Editing existing or patching a just-created project
+        if (justCreated) setJustCreated(json.data);
+        toast.success("Project updated.");
+        if (isEdit) onSaved(json.data); // auto-close only for pre-existing edits
+      } else {
+        // Brand new project — stay open so admin can add members
+        setJustCreated(json.data);
+        toast.success("Project created — add team members below.");
+      }
     } catch {
       toast.error("Something went wrong.");
     } finally {
@@ -158,8 +182,8 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   }
 
   async function addMember(u: UserBasic) {
-    if (!existing) return;
-    const res = await fetch(`/api/projects/${existing.id}/members`, {
+    if (!projectId) return;
+    const res = await fetch(`/api/projects/${projectId}/members`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: u.id }),
     });
@@ -168,8 +192,8 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   }
 
   async function removeMember(userId: string) {
-    if (!existing) return;
-    const res = await fetch(`/api/projects/${existing.id}/members`, {
+    if (!projectId) return;
+    const res = await fetch(`/api/projects/${projectId}/members`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
     });
@@ -184,7 +208,7 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleClose}>
       <div
         className="relative flex max-h-[90vh] w-[580px] max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_25px_60px_rgba(0,0,0,0.25)]"
         onClick={(e) => e.stopPropagation()}
@@ -194,7 +218,7 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
           <h2 className="text-base font-semibold text-gray-900">
             {isEdit ? "Edit project" : "New project"}
           </h2>
-          <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+          <button onClick={handleClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -205,6 +229,19 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            {/* Success banner after creation */}
+            {justCreated && !isEdit && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                <div>
+                  <p className="text-sm font-medium text-emerald-800">Project created</p>
+                  <p className="text-xs text-emerald-600 mt-0.5">
+                    Add team members below so they can see this project in their Hours tab. Click Done when finished.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Name */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700">Name *</label>
@@ -359,10 +396,13 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
               </div>
             </div>
 
-            {/* Member management (edit only) */}
-            {isEdit && (
+            {/* Member management — shown for existing edits AND after creation */}
+            {showMembers && (
               <div className="space-y-2 border-t border-gray-100 pt-4">
                 <label className="text-sm font-medium text-gray-700">Team members</label>
+                <p className="text-xs text-gray-400">
+                  Members can see and log hours against this project in their Hours tab.
+                </p>
                 {members.length > 0 && (
                   <div className="space-y-1.5">
                     {members.map((m) => (
@@ -407,15 +447,29 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
 
         {/* Footer */}
         <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-6 py-4">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <button
-            onClick={handleSave} disabled={saving || loadingMeta || !name.trim()}
-            className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-40"
-            style={{ backgroundColor: "#1B6B3A" }}
-          >
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {isEdit ? "Save changes" : "Create project"}
-          </button>
+          {justCreated && !isEdit ? (
+            // Post-creation: Done closes and registers the project
+            <button
+              onClick={() => onSaved(justCreated)}
+              className="flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-medium text-white"
+              style={{ backgroundColor: "#1B6B3A" }}
+            >
+              <Check className="h-3.5 w-3.5" />
+              Done
+            </button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose}>Cancel</Button>
+              <button
+                onClick={handleSave} disabled={saving || loadingMeta || !name.trim()}
+                className="flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-40"
+                style={{ backgroundColor: "#1B6B3A" }}
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isEdit ? "Save changes" : "Create project"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
