@@ -244,7 +244,7 @@ export function TimesheetReport() {
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: e.projectColour }}
                       />
-                      <span className="truncate max-w-[180px]">{e.projectName}</span>
+                      <span className="truncate max-w-[180px]" title={e.projectName}>{e.projectName}</span>
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right text-xs font-medium text-gray-900">

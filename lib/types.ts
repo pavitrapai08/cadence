@@ -172,10 +172,18 @@ export interface ReportChartItem {
   percentage: number;
 }
 
+export interface WeeklyHoursPoint {
+  weekStart: string;
+  hours: number;
+  billable: number;
+}
+
 export interface ReportsSummaryData {
   totalHours: number;
   byClient: ReportChartItem[];
   byProject: ReportChartItem[];
+  byTag: ReportChartItem[];
+  byWeek: WeeklyHoursPoint[];
   availableProjects: { id: string; name: string }[];
   availableTags: { id: string; name: string }[];
   availableUsers: { id: string; email: string; full_name: string | null }[];

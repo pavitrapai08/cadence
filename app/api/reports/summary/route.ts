@@ -11,13 +11,33 @@ function err(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, { status });
 }
 
-// Palette for items that have no colour of their own (clients)
 const PALETTE = [
   "#4C9EEB", "#2D9A5A", "#F5A623", "#9B59B6", "#E74C3C",
   "#1ABC9C", "#F39C12", "#3498DB", "#E91E63", "#607D8B",
 ];
 
+// Returns the ISO date of the Monday on or before the given date string
+function toWeekStart(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().slice(0, 10);
+}
+
+// All Monday-start weeks that overlap [from, to)
+function weeksInRange(from: string, to: string): string[] {
+  const weeks: string[] = [];
+  const cur = new Date(toWeekStart(from));
+  const end = new Date(to);
+  while (cur < end) {
+    weeks.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 7);
+  }
+  return weeks;
+}
+
 type RawEntry = {
+  date: string;
   hours: number;
   tag_ids: string[];
   project: {
@@ -28,9 +48,10 @@ type RawEntry = {
   } | null;
 };
 
-/** GET /api/reports/summary?dateFrom=&dateTo=&status=&projectId=&tagId=&userId=
- *  Returns totals grouped by client and project for the dashboard donut charts.
- *  Also returns filter option lists so the dashboard can populate its dropdowns.
+/** GET /api/reports/summary
+ *  Aggregates hours by client, project, tag, and week for the dashboard charts.
+ *  Filter dropdowns (projects, tags) come from project assignments, not just
+ *  the current result set — so they're always fully populated.
  */
 export async function GET(req: NextRequest) {
   const supabase = createClient();
@@ -60,11 +81,11 @@ export async function GET(req: NextRequest) {
   const tagId = url.searchParams.get("tagId");
   const userId = url.searchParams.get("userId");
 
-  // Fetch entries — RLS scopes to role automatically
+  // ── 1. Fetch entries (RLS scopes automatically) ────────────────────────────
   let query = supabase
     .from("time_entries")
     .select(
-      "hours, tag_ids, project:projects(id, name, colour, client:clients(id, name))"
+      "date, hours, tag_ids, project:projects(id, name, colour, client:clients(id, name))"
     )
     .gte("date", dateFrom)
     .lt("date", dateTo);
@@ -77,15 +98,79 @@ export async function GET(req: NextRequest) {
   if (dbErr) return err(500, "db_error", dbErr.message);
 
   let entries = (rawEntries ?? []) as unknown as RawEntry[];
+  if (tagId) entries = entries.filter((e) => (e.tag_ids ?? []).includes(tagId));
 
-  // Tag filter is done client-side (array contains)
-  if (tagId) {
-    entries = entries.filter((e) => (e.tag_ids ?? []).includes(tagId));
+  // ── 2. Collect tag IDs and fetch tag details ───────────────────────────────
+  const tagIdSet = new Set<string>();
+  entries.forEach((e) => (e.tag_ids ?? []).forEach((t) => tagIdSet.add(t)));
+  const entryTagIds = Array.from(tagIdSet);
+
+  // ── 3. Fetch available projects from assignments (not just entry result set) ──
+  // eslint-disable-next-line prefer-const
+  let [tagDetails, assignedProjects] = await Promise.all([
+    entryTagIds.length > 0
+      ? supabase
+          .from("tags")
+          .select("id, name, is_billable")
+          .in("id", entryTagIds)
+          .then((r) => r.data ?? [])
+      : Promise.resolve([] as { id: string; name: string; is_billable: boolean }[]),
+
+    role === "employee"
+      ? supabase
+          .from("project_members")
+          .select("project:projects(id, name)")
+          .eq("user_id", user.id)
+          .then((r) =>
+            (r.data ?? [])
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .map((m: any) => m.project)
+              .filter(Boolean) as { id: string; name: string }[]
+          )
+      : supabase
+          .from("projects")
+          .select("id, name")
+          .eq("is_active", true)
+          .then((r) => r.data ?? []),
+  ]);
+
+  const availableProjects = assignedProjects.sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  // ── 4. Fetch available tags from the user's project tag groups ─────────────
+  const projIdSet = new Set<string>(availableProjects.map((p) => p.id));
+  const projIds = Array.from(projIdSet);
+  let availableTags: { id: string; name: string }[] = [];
+  if (projIds.length > 0) {
+    const { data: tgRows } = await supabase
+      .from("projects")
+      .select("tag_group_id")
+      .in("id", projIds)
+      .not("tag_group_id", "is", null);
+    const tgIdSet = new Set<string>();
+    (tgRows ?? []).forEach((r) => r.tag_group_id && tgIdSet.add(r.tag_group_id));
+    const tgIds = Array.from(tgIdSet);
+    if (tgIds.length > 0) {
+      const { data: tags } = await supabase
+        .from("tags")
+        .select("id, name")
+        .in("tag_group_id", tgIds);
+      availableTags = (tags ?? []).sort((a, b) => a.name.localeCompare(b.name));
+    }
   }
+
+  // ── 5. Build lookup maps ───────────────────────────────────────────────────
+  const billableTagIds = new Set<string>(
+    tagDetails.filter((t) => t.is_billable).map((t) => t.id)
+  );
+  const tagNameMap = new Map<string, string>(
+    tagDetails.map((t) => [t.id, t.name])
+  );
 
   const totalHours = round2(entries.reduce((s, e) => s + e.hours, 0));
 
-  // Group by client
+  // ── 6. Aggregate by client ─────────────────────────────────────────────────
   const clientMap = new Map<string, { name: string; hours: number; idx: number }>();
   let ci = 0;
   for (const e of entries) {
@@ -97,83 +182,71 @@ export async function GET(req: NextRequest) {
   }
   const byClient = Array.from(clientMap.entries())
     .map(([id, { name, hours, idx }]) => ({
-      id,
-      name,
-      colour: PALETTE[idx % PALETTE.length],
-      hours,
+      id, name, colour: PALETTE[idx % PALETTE.length], hours,
       percentage: totalHours > 0 ? Math.round((hours / totalHours) * 100) : 0,
     }))
     .sort((a, b) => b.hours - a.hours);
 
-  // Group by project (projects have their own colour)
+  // ── 7. Aggregate by project ────────────────────────────────────────────────
   const projMap = new Map<string, { name: string; colour: string; hours: number }>();
   for (const e of entries) {
     const pid = e.project?.id ?? "__none__";
-    if (!projMap.has(pid)) {
-      projMap.set(pid, {
-        name: e.project?.name ?? "Unknown",
-        colour: e.project?.colour ?? "#888",
-        hours: 0,
-      });
-    }
-    const p = projMap.get(pid)!;
-    p.hours = round2(p.hours + e.hours);
+    if (!projMap.has(pid))
+      projMap.set(pid, { name: e.project?.name ?? "Unknown", colour: e.project?.colour ?? "#888", hours: 0 });
+    projMap.get(pid)!.hours = round2(projMap.get(pid)!.hours + e.hours);
   }
   const byProject = Array.from(projMap.entries())
     .map(([id, { name, colour, hours }]) => ({
-      id,
-      name,
-      colour,
-      hours,
+      id, name, colour, hours,
       percentage: totalHours > 0 ? Math.round((hours / totalHours) * 100) : 0,
     }))
     .sort((a, b) => b.hours - a.hours);
 
-  // Available projects for filter dropdown (derived from result set)
-  const projFilterMap = new Map<string, { id: string; name: string }>();
-  entries
-    .filter((e) => e.project)
-    .forEach((e) =>
-      projFilterMap.set(e.project!.id, { id: e.project!.id, name: e.project!.name })
-    );
-  const availableProjects = Array.from(projFilterMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  // Available tags for filter dropdown
-  const tagIdSet = new Set<string>();
-  entries.forEach((e) => (e.tag_ids ?? []).forEach((t) => tagIdSet.add(t)));
-  const allTagIds = Array.from(tagIdSet);
-  let availableTags: { id: string; name: string }[] = [];
-  if (allTagIds.length > 0) {
-    const { data: tags } = await supabase
-      .from("tags")
-      .select("id, name")
-      .in("id", allTagIds);
-    availableTags = (tags ?? []).sort((a, b) => a.name.localeCompare(b.name));
+  // ── 8. Aggregate by tag ────────────────────────────────────────────────────
+  const tagHoursMap = new Map<string, { name: string; hours: number }>();
+  for (const e of entries) {
+    for (const tid of (e.tag_ids ?? [])) {
+      const name = tagNameMap.get(tid);
+      if (!name) continue;
+      if (!tagHoursMap.has(tid)) tagHoursMap.set(tid, { name, hours: 0 });
+      tagHoursMap.get(tid)!.hours = round2(tagHoursMap.get(tid)!.hours + e.hours);
+    }
   }
+  const byTag = Array.from(tagHoursMap.entries())
+    .map(([id, { name, hours }], idx) => ({
+      id, name, colour: PALETTE[idx % PALETTE.length], hours,
+      percentage: totalHours > 0 ? Math.round((hours / totalHours) * 100) : 0,
+    }))
+    .sort((a, b) => b.hours - a.hours);
 
-  // Available users — manager/admin only, for "Anyone" filter
+  // ── 9. Aggregate by week (with billable split) ─────────────────────────────
+  const weeks = weeksInRange(dateFrom, dateTo);
+  const weekMap = new Map<string, { hours: number; billable: number }>();
+  weeks.forEach((w) => weekMap.set(w, { hours: 0, billable: 0 }));
+  for (const e of entries) {
+    const ws = toWeekStart(e.date);
+    if (!weekMap.has(ws)) continue;
+    const wk = weekMap.get(ws)!;
+    const isBillable = (e.tag_ids ?? []).some((tid) => billableTagIds.has(tid));
+    wk.hours = round2(wk.hours + e.hours);
+    if (isBillable) wk.billable = round2(wk.billable + e.hours);
+  }
+  const byWeek = weeks.map((w) => ({
+    weekStart: w,
+    hours: weekMap.get(w)!.hours,
+    billable: weekMap.get(w)!.billable,
+  }));
+
+  // ── 10. Available users (manager/admin only) ───────────────────────────────
   let availableUsers: { id: string; email: string; full_name: string | null }[] = [];
   if (role !== "employee") {
-    let uq = supabase
-      .from("users")
-      .select("id, email, full_name")
-      .eq("is_active", true);
+    let uq = supabase.from("users").select("id, email, full_name").eq("is_active", true);
     if (role === "manager") uq = uq.eq("manager_id", user.id);
     const { data: users } = await uq;
     availableUsers = users ?? [];
   }
 
   return NextResponse.json({
-    data: {
-      totalHours,
-      byClient,
-      byProject,
-      availableProjects,
-      availableTags,
-      availableUsers,
-      role,
-    },
+    data: { totalHours, byClient, byProject, byTag, byWeek, availableProjects, availableTags, availableUsers, role },
   });
 }

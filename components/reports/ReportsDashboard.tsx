@@ -9,6 +9,7 @@ import {
   ChevronDown,
   PieChart as PieIcon,
   BarChart3,
+  Tag,
   Loader2,
   FileText,
   ArrowRight,
@@ -28,19 +29,22 @@ import {
 } from "@dnd-kit/sortable";
 import Link from "next/link";
 import { DonutChartCard } from "./DonutChartCard";
+import { BarChartCard } from "./BarChartCard";
 import { ReportsSubNav } from "./ReportsSubNav";
 import { ReportsSummaryData } from "@/lib/types";
 import { formatHours } from "@/lib/hours";
 
-type WidgetType = "clients" | "projects";
+type WidgetType = "clients" | "projects" | "hours" | "tags";
 interface Widget {
   id: string;
   type: WidgetType;
 }
 
 const WIDGET_META: Record<WidgetType, { label: string; icon: React.ReactNode }> = {
-  clients: { label: "Clients", icon: <PieIcon className="h-4 w-4" /> },
+  clients: { label: "Clients",  icon: <PieIcon  className="h-4 w-4" /> },
   projects: { label: "Projects", icon: <BarChart3 className="h-4 w-4" /> },
+  hours:    { label: "Hours",    icon: <BarChart3 className="h-4 w-4" /> },
+  tags:     { label: "Tags",     icon: <Tag       className="h-4 w-4" /> },
 };
 
 function FilterSelect({
@@ -296,18 +300,35 @@ export function ReportsDashboard({ role }: { role: string }) {
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {widgets.map((widget) => {
-                const items =
+                if (widget.type === "hours") {
+                  return (
+                    <div key={widget.id} className="md:col-span-2">
+                      <BarChartCard
+                        id={widget.id}
+                        data={data?.byWeek ?? []}
+                        totalHours={data?.totalHours ?? 0}
+                        onRemove={() => toggleWidget(widget.type)}
+                      />
+                    </div>
+                  );
+                }
+                const donutItems =
                   widget.type === "clients"
                     ? (data?.byClient ?? [])
-                    : (data?.byProject ?? []);
-                const count = items.length;
-                const noun = widget.type === "clients" ? "client" : "project";
+                    : widget.type === "projects"
+                    ? (data?.byProject ?? [])
+                    : (data?.byTag ?? []);
+                const count = donutItems.length;
+                const noun =
+                  widget.type === "clients" ? "client"
+                  : widget.type === "projects" ? "project"
+                  : "tag";
                 return (
                   <DonutChartCard
                     key={widget.id}
                     id={widget.id}
                     title={WIDGET_META[widget.type].label}
-                    items={items}
+                    items={donutItems}
                     totalHours={data?.totalHours ?? 0}
                     totalLabel={`${count} ${noun}${count !== 1 ? "s" : ""}`}
                     onRemove={() => toggleWidget(widget.type)}

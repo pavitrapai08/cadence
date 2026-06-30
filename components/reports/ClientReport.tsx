@@ -86,7 +86,7 @@ function ClientRowGroup({
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: project.colour }}
                 />
-                {project.projectName}
+                <span title={project.projectName}>{project.projectName}</span>
               </span>
             </td>
             {weeks.map((w) => (
