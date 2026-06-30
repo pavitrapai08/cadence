@@ -35,7 +35,6 @@ export function CalendarDay({
     [projects]
   );
   const dayEntries = entries.filter((e) => e.date === dateStr);
-  const submitted = dayEntries.length > 0 && dayEntries.every((e) => e.status === "submitted");
   const total = dayEntries.reduce((s, e) => s + e.hours, 0);
 
   return (
@@ -66,7 +65,7 @@ export function CalendarDay({
                 key={entry.id}
                 entry={entry}
                 project={projectMap.get(entry.project_id)}
-                locked={locked || submitted}
+                locked={locked}
                 onClick={() => onEntryClick(entry)}
               />
             ))}
@@ -74,7 +73,7 @@ export function CalendarDay({
         )}
       </DroppableDay>
 
-      {!locked && !submitted && (
+      {!locked && (
         <button
           onClick={() => onNewEntry(dateStr)}
           className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"

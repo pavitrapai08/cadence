@@ -84,7 +84,6 @@ export function CalendarWeek({
           const dateStr = fmt(day, "yyyy-MM-dd");
           const dayEntries = byDate.get(dateStr) ?? [];
           const locked = isMonthLocked(day, lockedMonths);
-          const submitted = dayEntries.length > 0 && dayEntries.every((e) => e.status === "submitted");
           const dailyTotal = dayEntries.reduce((s, e) => s + e.hours, 0);
           const today = isToday(day);
 
@@ -135,13 +134,13 @@ export function CalendarWeek({
                       key={entry.id}
                       entry={entry}
                       project={projectMap.get(entry.project_id)}
-                      locked={locked || submitted}
+                      locked={locked}
                       onClick={() => onEntryClick(entry)}
                     />
                   ))}
 
                   {/* New entry button */}
-                  {!locked && !submitted && (
+                  {!locked && (
                     <button
                       onClick={() => onNewEntry(dateStr)}
                       className={cn(

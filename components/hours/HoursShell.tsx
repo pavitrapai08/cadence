@@ -97,9 +97,8 @@ export function HoursShell({ initialEntries, projects, lockRows, user }: HoursSh
   function openEntry(entry: TimeEntry) {
     const dayDate = new Date(entry.date + "T00:00:00");
     const locked = isMonthLocked(dayDate, lockedMonths);
-    const submitted = entry.status === "submitted";
     setModal({
-      mode: locked || submitted ? "readonly" : "edit",
+      mode: locked ? "readonly" : "edit",
       date: entry.date,
       entry,
     });

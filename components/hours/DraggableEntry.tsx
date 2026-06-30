@@ -15,7 +15,7 @@ interface DraggableEntryProps {
 export function DraggableEntry({ entry, project, locked, onClick }: DraggableEntryProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: entry.id,
-    disabled: locked || entry.status === "submitted",
+    disabled: locked,
     data: { entry },
   });
 

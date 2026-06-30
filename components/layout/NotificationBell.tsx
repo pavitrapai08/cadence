@@ -9,8 +9,9 @@ interface AppNotification {
   id: string;
   user_id: string;
   type: "timesheet_submitted" | "missing_hours";
-  message: string;
-  read: boolean;
+  title: string;
+  body: string | null;
+  is_read: boolean;
   created_at: string;
 }
 
@@ -42,7 +43,7 @@ export function NotificationBell() {
 
       if (data) {
         setNotifications(data as AppNotification[]);
-        setUnread(data.filter((n) => !n.read).length);
+        setUnread(data.filter((n) => !n.is_read).length);
       }
 
       // Subscribe to new notifications for this user only
@@ -75,10 +76,10 @@ export function NotificationBell() {
     const supabase = createClient();
     await supabase
       .from("notifications")
-      .update({ read: true })
+      .update({ is_read: true })
       .eq("user_id", userId)
-      .eq("read", false);
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      .eq("is_read", false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnread(0);
   }
 
@@ -142,18 +143,21 @@ export function NotificationBell() {
                   key={n.id}
                   className={cn(
                     "flex items-start gap-3 border-b border-gray-50 px-4 py-3 last:border-b-0",
-                    !n.read && "bg-emerald-50/50"
+                    !n.is_read && "bg-emerald-50/50"
                   )}
                 >
                   {/* Unread dot */}
                   <span
                     className={cn(
                       "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      n.read ? "bg-gray-200" : "bg-[#1B6B3A]"
+                      n.is_read ? "bg-gray-200" : "bg-[#1B6B3A]"
                     )}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug text-gray-800">{n.message}</p>
+                    <p className="text-sm font-medium leading-snug text-gray-900">{n.title}</p>
+                    {n.body && (
+                      <p className="mt-0.5 text-xs leading-snug text-gray-500">{n.body}</p>
+                    )}
                     <p className="mt-0.5 text-[11px] text-gray-400">{formatTime(n.created_at)}</p>
                   </div>
                 </div>
