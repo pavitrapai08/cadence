@@ -162,6 +162,26 @@ export interface TimesheetReportSummary {
   totalHours: number;
 }
 
+// ── Reports: Summary / Dashboard ─────────────────────────────────────────────
+
+export interface ReportChartItem {
+  id: string;
+  name: string;
+  colour: string;
+  hours: number;
+  percentage: number;
+}
+
+export interface ReportsSummaryData {
+  totalHours: number;
+  byClient: ReportChartItem[];
+  byProject: ReportChartItem[];
+  availableProjects: { id: string; name: string }[];
+  availableTags: { id: string; name: string }[];
+  availableUsers: { id: string; email: string; full_name: string | null }[];
+  role: string;
+}
+
 // ── API response envelope ─────────────────────────────────────────────────────
 
 export interface ApiError {

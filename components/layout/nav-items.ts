@@ -24,7 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Hours", href: "/hours", icon: Clock },
   { label: "Projects", href: "/projects", icon: FolderKanban, matchPrefix: "/projects" },
   { label: "People", href: "/people", icon: Users, managerOnly: true },
-  { label: "Reports", href: "/reports/clients", icon: BarChart3, matchPrefix: "/reports" },
+  { label: "Reports", href: "/reports", icon: BarChart3, matchPrefix: "/reports" },
   { label: "AI", href: "/ai", icon: Sparkles, brand: true },
   { label: "Account", href: "/account", icon: Settings },
 ];

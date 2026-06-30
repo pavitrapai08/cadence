@@ -1,12 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, Loader2, BarChart3, Info } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Loader2,
+  BarChart3,
+  Info,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { formatHours } from "@/lib/hours";
 import { ClientReportRow } from "@/lib/types";
 import { ExportButton, ExportColumn } from "./ExportButton";
+import { ReportsSubNav } from "./ReportsSubNav";
+
+const VISIBLE_WEEKS = 8;
 
 function WeekHeader({ weeks }: { weeks: string[] }) {
   return (
@@ -37,7 +47,6 @@ function ClientRowGroup({
 
   return (
     <>
-      {/* Client header row */}
       <tr
         className="cursor-pointer bg-gray-50 hover:bg-gray-100/80 transition-colors"
         onClick={() => setExpanded((v) => !v)}
@@ -52,21 +61,19 @@ function ClientRowGroup({
             {client.clientName}
           </span>
         </td>
-        {weeks.map((w) => (
-          <td key={w} className="px-3 py-2.5 text-right text-xs font-medium text-gray-600">
-            {client.projects.reduce((s, p) => s + (p.weeklyHours[w] ?? 0), 0) > 0
-              ? formatHours(
-                  client.projects.reduce((s, p) => s + (p.weeklyHours[w] ?? 0), 0)
-                )
-              : <span className="text-gray-300">—</span>}
-          </td>
-        ))}
+        {weeks.map((w) => {
+          const total = client.projects.reduce((s, p) => s + (p.weeklyHours[w] ?? 0), 0);
+          return (
+            <td key={w} className="px-3 py-2.5 text-right text-xs font-medium text-gray-600">
+              {total > 0 ? formatHours(total) : <span className="text-gray-300">—</span>}
+            </td>
+          );
+        })}
         <td className="px-3 py-2.5 text-right text-xs font-semibold text-gray-800">
           {formatHours(client.totalHours)}
         </td>
       </tr>
 
-      {/* Project rows */}
       {expanded &&
         client.projects.map((project) => (
           <tr
@@ -84,9 +91,11 @@ function ClientRowGroup({
             </td>
             {weeks.map((w) => (
               <td key={w} className="px-3 py-2 text-right text-xs text-gray-500">
-                {project.weeklyHours[w]
-                  ? formatHours(project.weeklyHours[w])
-                  : <span className="text-gray-200">—</span>}
+                {project.weeklyHours[w] ? (
+                  formatHours(project.weeklyHours[w])
+                ) : (
+                  <span className="text-gray-200">—</span>
+                )}
               </td>
             ))}
             <td className="px-3 py-2 text-right text-xs font-medium text-gray-700">
@@ -98,7 +107,10 @@ function ClientRowGroup({
   );
 }
 
-function buildExportRows(clients: ClientReportRow[], weeks: string[]): Record<string, unknown>[] {
+function buildExportRows(
+  clients: ClientReportRow[],
+  weeks: string[]
+): Record<string, unknown>[] {
   const rows: Record<string, unknown>[] = [];
   for (const c of clients) {
     for (const p of c.projects) {
@@ -122,7 +134,10 @@ function buildExportColumns(weeks: string[]): ExportColumn[] {
     { key: "client", label: "Client" },
     { key: "project", label: "Project" },
     { key: "externalId", label: "External ID" },
-    ...weeks.map((w) => ({ key: format(parseISO(w), "MMM d"), label: format(parseISO(w), "MMM d") })),
+    ...weeks.map((w) => ({
+      key: format(parseISO(w), "MMM d"),
+      label: format(parseISO(w), "MMM d"),
+    })),
     { key: "total", label: "Total Hours" },
   ];
 }
@@ -133,6 +148,8 @@ export function ClientReport() {
   const [cappedNote, setCappedNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // Week window: index of the first visible week
+  const [windowStart, setWindowStart] = useState(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -148,6 +165,9 @@ export function ClientReport() {
       setClients(json.data.clients);
       setWeeks(json.data.weeks);
       setCappedNote(json.data.cappedNote ?? null);
+      // Default window to the most recent weeks
+      const total = json.data.weeks.length;
+      setWindowStart(Math.max(0, total - VISIBLE_WEEKS));
     } catch {
       setFetchError("Something went wrong.");
       toast.error("Something went wrong.");
@@ -156,37 +176,52 @@ export function ClientReport() {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const visibleWeeks = weeks.slice(windowStart, windowStart + VISIBLE_WEEKS);
+  const canGoPrev = windowStart > 0;
+  const canGoNext = windowStart + VISIBLE_WEEKS < weeks.length;
 
   const exportRows = buildExportRows(clients, weeks);
   const exportColumns = buildExportColumns(weeks);
   const totalHours = clients.reduce((s, c) => s + c.totalHours, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Hero */}
-      <div className="-mx-4 -mt-4 mb-6 md:-mx-6 md:-mt-6">
+      <div className="-mx-4 -mt-4 md:-mx-6 md:-mt-6">
         <div className="relative overflow-hidden bg-gradient-to-br from-violet-50/70 via-emerald-50/40 to-[#F8FAFB] px-4 py-7 md:px-6">
           <div className="pointer-events-none absolute right-20 top-5 h-3 w-3 rounded-full bg-violet-300/40" />
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Clients & Projects</h1>
-          <p className="mt-1.5 text-sm text-gray-500">Hours by client and project — last 12 weeks</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Clients & Projects
+          </h1>
+          <p className="mt-1.5 text-sm text-gray-500">
+            Hours by client and project — last 12 weeks
+          </p>
         </div>
       </div>
+
+      <ReportsSubNav />
 
       {/* Summary + export bar */}
       {!loading && clients.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
           <div className="flex items-center gap-5 text-sm">
             <span className="text-gray-500">
-              <span className="font-semibold text-gray-900">{clients.length}</span> client{clients.length !== 1 ? "s" : ""}
+              <span className="font-semibold text-gray-900">{clients.length}</span>{" "}
+              client{clients.length !== 1 ? "s" : ""}
             </span>
             <span className="text-gray-500">
               <span className="font-semibold text-gray-900">
                 {clients.reduce((s, c) => s + c.projects.length, 0)}
-              </span> projects
+              </span>{" "}
+              projects
             </span>
             <span className="text-gray-500">
-              <span className="font-semibold text-gray-900">{formatHours(totalHours)}</span> total
+              <span className="font-semibold text-gray-900">{formatHours(totalHours)}</span>{" "}
+              total
             </span>
           </div>
           <ExportButton
@@ -211,7 +246,9 @@ export function ClientReport() {
       ) : fetchError ? (
         <div className="rounded-2xl border border-dashed border-red-200 bg-red-50/50 py-12 text-center">
           <p className="text-sm text-red-600">{fetchError}</p>
-          <button onClick={fetchData} className="mt-2 text-xs text-red-500 underline">Retry</button>
+          <button onClick={fetchData} className="mt-2 text-xs text-red-500 underline">
+            Retry
+          </button>
         </div>
       ) : clients.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
@@ -219,23 +256,62 @@ export function ClientReport() {
           <p className="text-sm font-medium text-gray-500">No hours logged in this period</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <table className="w-full min-w-[600px] text-left">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="sticky left-0 bg-white px-4 py-2.5 text-[11px] font-medium text-gray-400 min-w-[200px]">
-                  Client / Project
-                </th>
-                <WeekHeader weeks={weeks} />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {clients.map((c) => (
-                <ClientRowGroup key={c.clientId} client={c} weeks={weeks} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Week navigation */}
+          {weeks.length > VISIBLE_WEEKS && (
+            <div className="flex items-center justify-between px-1">
+              <button
+                onClick={() => setWindowStart((w) => Math.max(0, w - 1))}
+                disabled={!canGoPrev}
+                className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Older
+              </button>
+
+              <span className="text-xs text-gray-400">
+                {visibleWeeks.length > 0 && (
+                  <>
+                    {format(parseISO(visibleWeeks[0]), "MMM d")} –{" "}
+                    {format(
+                      parseISO(visibleWeeks[visibleWeeks.length - 1]),
+                      "MMM d, yyyy"
+                    )}
+                  </>
+                )}
+              </span>
+
+              <button
+                onClick={() =>
+                  setWindowStart((w) =>
+                    Math.min(weeks.length - VISIBLE_WEEKS, w + 1)
+                  )
+                }
+                disabled={!canGoNext}
+                className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Newer <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <table className="w-full min-w-[600px] text-left">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="sticky left-0 bg-white px-4 py-2.5 text-[11px] font-medium text-gray-400 min-w-[200px]">
+                    Client / Project
+                  </th>
+                  <WeekHeader weeks={visibleWeeks} />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {clients.map((c) => (
+                  <ClientRowGroup key={c.clientId} client={c} weeks={visibleWeeks} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { formatHours } from "@/lib/hours";
 import { TimesheetEntryRow, TimesheetReportSummary } from "@/lib/types";
 import { ExportButton, ExportColumn } from "./ExportButton";
+import { ReportsSubNav } from "./ReportsSubNav";
 
 const STATUS_STYLES = {
   submitted: "bg-emerald-50 text-emerald-700",
@@ -133,6 +134,8 @@ export function TimesheetReport() {
           </p>
         </div>
       </div>
+
+      <ReportsSubNav />
 
       {/* Role context banner */}
       {showUser && (
