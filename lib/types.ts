@@ -178,6 +178,12 @@ export interface WeeklyHoursPoint {
   billable: number;
 }
 
+export interface AvailableTagGroup {
+  id: string;
+  name: string;
+  tags: { id: string; name: string }[];
+}
+
 export interface ReportsSummaryData {
   totalHours: number;
   byClient: ReportChartItem[];
@@ -185,7 +191,7 @@ export interface ReportsSummaryData {
   byTag: ReportChartItem[];
   byWeek: WeeklyHoursPoint[];
   availableProjects: { id: string; name: string }[];
-  availableTags: { id: string; name: string }[];
+  availableTagGroups: AvailableTagGroup[];
   availableUsers: { id: string; email: string; full_name: string | null }[];
   role: string;
 }

@@ -138,10 +138,10 @@ export async function GET(req: NextRequest) {
     a.name.localeCompare(b.name)
   );
 
-  // ── 4. Fetch available tags from the user's project tag groups ─────────────
+  // ── 4. Fetch available tags grouped by tag group ──────────────────────────
   const projIdSet = new Set<string>(availableProjects.map((p) => p.id));
   const projIds = Array.from(projIdSet);
-  let availableTags: { id: string; name: string }[] = [];
+  let availableTagGroups: { id: string; name: string; tags: { id: string; name: string }[] }[] = [];
   if (projIds.length > 0) {
     const { data: tgRows } = await supabase
       .from("projects")
@@ -154,9 +154,18 @@ export async function GET(req: NextRequest) {
     if (tgIds.length > 0) {
       const { data: tags } = await supabase
         .from("tags")
-        .select("id, name")
-        .in("tag_group_id", tgIds);
-      availableTags = (tags ?? []).sort((a, b) => a.name.localeCompare(b.name));
+        .select("id, name, tag_group_id, tag_group:tag_groups(id, name)")
+        .in("tag_group_id", tgIds)
+        .order("sort_order");
+      type TagWithGroup = { id: string; name: string; tag_group: { id: string; name: string } | null };
+      const tgMap = new Map<string, { id: string; name: string; tags: { id: string; name: string }[] }>();
+      ((tags ?? []) as unknown as TagWithGroup[]).forEach((t) => {
+        const tg = t.tag_group;
+        if (!tg) return;
+        if (!tgMap.has(tg.id)) tgMap.set(tg.id, { id: tg.id, name: tg.name, tags: [] });
+        tgMap.get(tg.id)!.tags.push({ id: t.id, name: t.name });
+      });
+      availableTagGroups = Array.from(tgMap.values());
     }
   }
 
@@ -247,6 +256,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
-    data: { totalHours, byClient, byProject, byTag, byWeek, availableProjects, availableTags, availableUsers, role },
+    data: { totalHours, byClient, byProject, byTag, byWeek, availableProjects, availableTagGroups, availableUsers, role },
   });
 }

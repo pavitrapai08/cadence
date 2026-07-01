@@ -52,11 +52,13 @@ function FilterSelect({
   onChange,
   placeholder,
   options,
+  groups,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  options: { value: string; label: string }[];
+  options?: { value: string; label: string }[];
+  groups?: { groupLabel: string; options: { value: string; label: string }[] }[];
 }) {
   return (
     <div className="relative">
@@ -66,11 +68,21 @@ function FilterSelect({
         className="h-8 appearance-none rounded-full border border-gray-200 bg-white pl-3 pr-7 text-xs font-medium text-gray-600 shadow-sm outline-none transition-colors hover:border-gray-300 focus:border-[#1B6B3A]"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {groups
+          ? groups.map((g) => (
+              <optgroup key={g.groupLabel} label={g.groupLabel}>
+                {g.options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          : (options ?? []).map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
       </select>
       <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
     </div>
@@ -92,8 +104,8 @@ export function ReportsDashboard({ role }: { role: string }) {
   const [loading, setLoading] = useState(true);
   const addMenuRef = useRef<HTMLDivElement>(null);
 
-  const dateFrom = startOfMonth(month).toISOString().slice(0, 10);
-  const dateTo = startOfMonth(addMonths(month, 1)).toISOString().slice(0, 10);
+  const dateFrom = format(startOfMonth(month), "yyyy-MM-dd");
+  const dateTo = format(startOfMonth(addMonths(month, 1)), "yyyy-MM-dd");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -223,9 +235,9 @@ export function ReportsDashboard({ role }: { role: string }) {
           value={tagFilter}
           onChange={setTagFilter}
           placeholder="Any tag"
-          options={(data?.availableTags ?? []).map((t) => ({
-            value: t.id,
-            label: t.name,
+          groups={(data?.availableTagGroups ?? []).map((g) => ({
+            groupLabel: g.name,
+            options: g.tags.map((t) => ({ value: t.id, label: t.name })),
           }))}
         />
 
