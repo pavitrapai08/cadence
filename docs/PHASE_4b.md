@@ -2,7 +2,7 @@
 
 > **Status:** Complete  
 > **Branch:** `main`  
-> **Commit:** `fa0cf95`  
+> **Commits:** `fa0cf95` (initial), `18e2b4f` (Hours + Tags charts, project/tag filters from assignments), `711ca8c` (timezone fix, grouped tag dropdown)  
 > **Depends on:** Phase 4 (People tab, Reports tab, CSV/PDF export)
 
 ---
@@ -12,10 +12,11 @@
 A major upgrade to the Reports tab that transforms it from a static table into a Timely-style interactive dashboard:
 
 1. **Reports overview dashboard** (`/reports`) — modular chart cards, filter bar, month navigation, and quick links to the detailed sub-pages.
-2. **Donut chart cards** — recharts `PieChart` donut for "Clients by Hours" and "Projects by Hours", each draggable and removable.
-3. **Filter bar** — month navigation, State/Person/Project/Tag filter pills that re-fetch on change.
-4. **Week-window navigation** on the Clients & Projects table — view 8 weeks at a time and slide the window prev/next instead of seeing all 12 at once.
-5. **Shared sub-navigation** across all three report pages: Overview | Clients & Projects | Timesheets.
+2. **Donut chart cards** — recharts `PieChart` donut for "Clients by Hours", "Projects by Hours", and "Tags by Hours", each draggable and removable.
+3. **Bar chart card** — stacked weekly hours chart (billable / non-billable split) spanning the full grid width.
+4. **Filter bar** — month navigation, State/Person/Project/Tag filter pills that re-fetch on change. Project filter draws from `project_members` (all assigned projects, not just those with entries in the current range). Tag filter shows tags grouped by tag group using `<optgroup>`.
+5. **Week-window navigation** on the Clients & Projects table — view 8 weeks at a time and slide the window prev/next instead of seeing all 12 at once.
+6. **Shared sub-navigation** across all three report pages: Overview | Clients & Projects | Timesheets.
 
 ---
 
@@ -33,13 +34,15 @@ Client component that owns all dashboard state and interaction.
 
 | Control | Type | Behaviour |
 |---|---|---|
-| Month navigation | `< June 2025 >` prev/next buttons | Updates `dateFrom`/`dateTo`; triggers refetch |
+| Month navigation | `< June 2025 >` prev/next buttons | Updates `dateFrom`/`dateTo` using `format(startOfMonth(month), "yyyy-MM-dd")` (timezone-safe); triggers refetch |
 | State | Pill `<select>` | All / Draft / Submitted; sent to API |
 | Anyone | Pill `<select>` — **manager/admin only** | Lists the caller's accessible users; filters the summary to one person |
-| Any project | Pill `<select>` | Populated from the projects present in the API result set |
-| Any tag | Pill `<select>` | Populated from the tags present in the API result set |
+| Any project | Pill `<select>` | Populated from `project_members` (all assigned projects regardless of current date range) |
+| Any tag | Pill `<select>` with `<optgroup>` | Tags grouped by tag group name via `availableTagGroups`; always shows all tags for assigned projects |
 
-All five filter controls derive their available options from the current summary response, so only relevant values are ever shown.
+**Timezone fix:** `dateFrom` and `dateTo` are computed with `format(startOfMonth(month), "yyyy-MM-dd")` from date-fns rather than `.toISOString().slice(0,10)`. The ISO string approach converts to UTC first — in IST (UTC+5:30) this shifts the first/last day of the month by half a day, silently excluding entries logged on that boundary date.
+
+**`FilterSelect` component** accepts either a flat `options` prop or a `groups` prop (`{ groupLabel, options[] }[]`). The "Any tag" control uses `groups` to render `<optgroup label={tagGroupName}>` sections.
 
 **"Add charts and tables" dropdown:**
 
@@ -62,12 +65,14 @@ DndContext (PointerSensor) + SortableContext (rectSortingStrategy)
 **Widget state:**
 
 ```ts
-type WidgetType = "clients" | "projects";
+type WidgetType = "clients" | "projects" | "hours" | "tags";
 interface Widget { id: string; type: WidgetType; }
 
 // Default (matches Timely defaults)
 [{ id: "clients", type: "clients" }, { id: "projects", type: "projects" }]
 ```
+
+The `"hours"` widget renders a `BarChartCard` (weekly stacked bar) and spans `md:col-span-2`. The `"tags"` widget renders a `DonutChartCard` using `data.byTag`. All four types are toggleable from the "Add charts and tables" dropdown.
 
 **Quick-link cards** at the bottom: two cards linking to `/reports/clients` and `/reports/timesheets` with an ArrowRight hover animation.
 
@@ -125,8 +130,8 @@ entries
 Percentages are `Math.round(hours / totalHours × 100)`. Totals use `round2()` throughout to avoid decimal drift.
 
 **Filter option lists returned in the same response:**
-- `availableProjects` — derived from the result set (not a separate DB query); only shows projects that have at least one entry in the current filter context
-- `availableTags` — resolved from unique `tag_ids` across the result set via one batch `tags` query
+- `availableProjects` — from `project_members` for employees, or all active projects for manager/admin. Always fully populated regardless of date range.
+- `availableTagGroups: AvailableTagGroup[]` — fetched via `project_members → projects.tag_group_id → tags` chain. Each group has `{ id, name, tags[] }`, ordered by `sort_order` within each group. Used to render `<optgroup>` in the tag filter.
 - `availableUsers` — manager/admin only; employees get `[]`; managers get their direct reports; admins get all active users
 
 **Colour palette for clients** (clients have no `colour` column in the DB — palette is assigned by insertion order):
@@ -196,7 +201,9 @@ Exact-match for `/reports` (so it doesn't also activate on `/reports/clients`); 
 | Type | Fields | Used by |
 |---|---|---|
 | `ReportChartItem` | `id, name, colour, hours, percentage` | DonutChartCard, ReportsDashboard, `/api/reports/summary` |
-| `ReportsSummaryData` | `totalHours, byClient[], byProject[], availableProjects[], availableTags[], availableUsers[], role` | ReportsDashboard, `/api/reports/summary` |
+| `WeeklyHoursPoint` | `weekStart, hours, billable` | BarChartCard, ReportsDashboard, `/api/reports/summary` |
+| `AvailableTagGroup` | `id, name, tags[]` | ReportsDashboard tag filter `<optgroup>`, `/api/reports/summary` |
+| `ReportsSummaryData` | `totalHours, byClient[], byProject[], byTag[], byWeek[], availableProjects[], availableTagGroups[], availableUsers[], role` | ReportsDashboard, `/api/reports/summary` |
 
 ---
 
@@ -204,12 +211,13 @@ Exact-match for `/reports` (so it doesn't also activate on `/reports/clients`); 
 
 | File | Type | Notes |
 |---|---|---|
-| `lib/types.ts` | MODIFIED | Added `ReportChartItem`, `ReportsSummaryData` |
+| `lib/types.ts` | MODIFIED | Added `ReportChartItem`, `WeeklyHoursPoint`, `AvailableTagGroup`, `ReportsSummaryData` |
 | `components/layout/nav-items.ts` | MODIFIED | Reports href `/reports/clients` → `/reports` |
 | `app/(app)/reports/page.tsx` | NEW | Server component; passes role to `ReportsDashboard` |
-| `app/api/reports/summary/route.ts` | NEW | GET summary — all authenticated (RLS-scoped) |
-| `components/reports/ReportsDashboard.tsx` | NEW | Dashboard with filters, DnD card grid, quick links |
+| `app/api/reports/summary/route.ts` | NEW | GET summary — all authenticated (RLS-scoped); returns `availableTagGroups` grouped by tag group |
+| `components/reports/ReportsDashboard.tsx` | NEW | Dashboard with filters (timezone-safe dates, grouped tag `<optgroup>`), DnD card grid (4 widget types), quick links |
 | `components/reports/DonutChartCard.tsx` | NEW | Draggable recharts donut + legend |
+| `components/reports/BarChartCard.tsx` | NEW | Draggable stacked bar chart (billable / non-billable by week) |
 | `components/reports/ReportsSubNav.tsx` | NEW | Shared Overview / Clients / Timesheets tab bar |
 | `components/reports/ClientReport.tsx` | MODIFIED | Week-window navigation + sub-nav |
 | `components/reports/TimesheetReport.tsx` | MODIFIED | Sub-nav added |
@@ -220,7 +228,7 @@ Exact-match for `/reports` (so it doesn't also activate on `/reports/clients`); 
 
 **Dashboard-first navigation.** The Reports tab now lands on an overview rather than jumping straight into the table. This mirrors Timely's UX and gives users a quick summary before they drill down.
 
-**Filter options derived from the result set, not DB lookup.** `availableProjects` and `availableTags` in the summary response come from scanning the returned entries rather than querying the projects/tags tables separately. This means the dropdowns show only items that are actually relevant to the current date range and other active filters, preventing "0 results" frustration.
+**Filter options from project assignments, not the entry result set.** `availableProjects` comes from `project_members` (employees) or all active projects (manager/admin) — not from scanning returned entries. This means the dropdown is always fully populated even in months where a user hasn't logged anything yet. `availableTagGroups` similarly comes from the assigned projects' tag groups rather than the current result set, so the tag filter is never empty just because no entries have been logged this month.
 
 **Client colours are server-assigned by insertion order.** Clients have no `colour` column in the schema. Rather than store colours or ask the user to pick them, the summary route assigns palette colours deterministically by the order clients first appear in the result set. Within a single page session this is stable; across sessions the same client may get a different colour if a different client appears first. This is intentional — report colours are for visual distinction, not brand identity.
 
@@ -243,11 +251,13 @@ Exact-match for `/reports` (so it doesn't also activate on `/reports/clients`); 
 - [ ] Total hours pill in the filter bar updates with each filter change
 
 ### Add / remove charts
-- [ ] Click "+ Add charts and tables" → panel opens
-- [ ] Both Clients and Projects show a green dot (both active by default)
+- [ ] Click "+ Add charts and tables" → panel opens showing 4 options: Clients, Projects, Hours, Tags
+- [ ] Both Clients and Projects show a green dot (both active by default); Hours and Tags show no dot
 - [ ] Click "Clients" → Clients chart removed; panel shows no dot for Clients
 - [ ] Click "Clients" again → Clients chart re-added
-- [ ] Removing both → empty state "Click Add charts…" appears
+- [ ] Add "Hours" → full-width stacked bar chart appears showing billable (dark green) / non-billable (light green) by week
+- [ ] Add "Tags" → donut chart appears showing hours by tag
+- [ ] Removing all four → empty state "Click Add charts…" appears
 - [ ] Clicking outside the menu → panel closes without state change
 
 ### Donut chart
@@ -276,6 +286,15 @@ Exact-match for `/reports` (so it doesn't also activate on `/reports/clients`); 
 - [ ] Active tab highlighted in DF green; inactive tabs grey
 - [ ] Clicking a tab navigates to the correct sub-page
 - [ ] Sidebar still highlights "Reports" on all three sub-pages
+
+### Filter dropdowns
+- [ ] "Any project" dropdown shows ALL assigned projects, even those with no entries in the current month
+- [ ] "Any tag" dropdown shows tags grouped by tag group name (via `<optgroup>` headings)
+- [ ] Tag filter groups reflect the user's assigned projects (not just tags used in current entries)
+
+### Timezone safety
+- [ ] In IST (UTC+5:30): entries logged on the first and last day of the selected month both appear in charts
+- [ ] Navigating months with the `<` / `>` arrows always stays on the correct calendar month (no off-by-one)
 
 ### Role scoping
 - [ ] Employee on `/reports` → "Anyone" filter absent; chart shows own hours only
