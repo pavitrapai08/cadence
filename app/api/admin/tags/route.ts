@@ -56,3 +56,46 @@ export async function POST(req: NextRequest) {
   if (dbErr) return NextResponse.json({ error: { code: "db_error", message: dbErr.message } }, { status: 500 });
   return NextResponse.json({ data }, { status: 201 });
 }
+
+/** PATCH /api/admin/tags?tagId=xxx — update tag fields (admin only). */
+export async function PATCH(req: NextRequest) {
+  const supabase = createClient();
+  const { error } = await requireAdmin(supabase);
+  if (error) return error;
+
+  const tagId = req.nextUrl.searchParams.get("tagId");
+  if (!tagId) return NextResponse.json({ error: { code: "bad_request", message: "tagId is required." } }, { status: 400 });
+
+  const body = await req.json();
+  const update: Record<string, unknown> = {};
+  if ("name" in body && body.name?.trim()) update.name = body.name.trim();
+  if ("is_billable" in body) update.is_billable = Boolean(body.is_billable);
+  if ("is_required" in body) update.is_required = Boolean(body.is_required);
+
+  if (Object.keys(update).length === 0)
+    return NextResponse.json({ error: { code: "bad_request", message: "No valid fields." } }, { status: 400 });
+
+  const { data, error: dbErr } = await supabase
+    .from("tags")
+    .update(update)
+    .eq("id", tagId)
+    .select("id, name, is_billable, is_required")
+    .single();
+
+  if (dbErr) return NextResponse.json({ error: { code: "db_error", message: dbErr.message } }, { status: 500 });
+  return NextResponse.json({ data });
+}
+
+/** DELETE /api/admin/tags?tagId=xxx — delete tag (admin only). */
+export async function DELETE(req: NextRequest) {
+  const supabase = createClient();
+  const { error } = await requireAdmin(supabase);
+  if (error) return error;
+
+  const tagId = req.nextUrl.searchParams.get("tagId");
+  if (!tagId) return NextResponse.json({ error: { code: "bad_request", message: "tagId is required." } }, { status: 400 });
+
+  const { error: dbErr } = await supabase.from("tags").delete().eq("id", tagId);
+  if (dbErr) return NextResponse.json({ error: { code: "db_error", message: dbErr.message } }, { status: 500 });
+  return NextResponse.json({ data: { ok: true } });
+}
