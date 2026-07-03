@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** POST /api/cron/missing-hours
@@ -9,8 +10,8 @@ export const dynamic = "force-dynamic";
  *  by CRON_SECRET so it cannot be triggered by anyone else.
  */
 export async function POST(req: NextRequest) {
-  const secret =
-    req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
+  // Accept the secret via header only — query params appear in access logs.
+  const secret = req.headers.get("x-cron-secret");
   if (!secret || secret !== process.env.CRON_SECRET) {
     return NextResponse.json(
       { error: { code: "forbidden", message: "Invalid or missing cron secret." } },

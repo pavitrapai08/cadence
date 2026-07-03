@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Paths reachable without a session. */
-const PUBLIC_PREFIXES = ["/login", "/auth", "/api/health", "/api/cron"];
+const PUBLIC_PREFIXES = ["/login", "/auth", "/api/health", "/api/cron/missing-hours"];
 
 /**
  * Refresh the Supabase session on every request and gate authenticated routes.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** PATCH /api/admin/users/[id] — admin updates a user's role, manager_id, or capacity. */

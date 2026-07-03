@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { weekStart, weekStartISO, shiftWeek, parseWeekStart } from "@/lib/week";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function round2(n: number) {

@@ -2,17 +2,20 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { weekStart, weekDays } from "@/lib/week";
 import { format } from "date-fns";
+import { classifyNote } from "@/lib/health";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export type HealthIssue = "no_note" | "too_brief" | "ok";
+// Re-export so client components can import types from one place
+export type { HealthIssue } from "@/lib/health";
 
 export interface HealthEntry {
   entryId: string;
   date: string;
   projectName: string;
   note: string | null;
-  issue: HealthIssue;
+  issue: import("@/lib/health").HealthIssue;
 }
 
 type RawHealthEntry = {
@@ -60,16 +63,8 @@ export async function POST(req: NextRequest) {
   const entries = (rawEntries ?? []) as unknown as RawHealthEntry[];
 
   const results: HealthEntry[] = entries.map((e) => {
-    // Use polished description if available, otherwise raw notes
     const note = e.ai_description?.trim() || e.raw_notes?.trim() || null;
-    let issue: HealthIssue;
-    if (!note || note === "") {
-      issue = "no_note";
-    } else if (note.split(/\s+/).length < 5) {
-      issue = "too_brief";
-    } else {
-      issue = "ok";
-    }
+    const issue = classifyNote(note);
     return {
       entryId: e.id,
       date: e.date,

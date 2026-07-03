@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = createClient();

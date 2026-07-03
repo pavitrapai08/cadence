@@ -13,7 +13,14 @@ const DF_DOMAIN = "@decisionfoundry.com";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/hours";
+  // Validate next to prevent open-redirect: must start with "/" and contain no
+  // protocol-relative prefix (//) or @ (which tricks parsers into treating it as
+  // a username, e.g. https://app.example.com@attacker.com).
+  const rawNext = searchParams.get("next") ?? "/hours";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.includes("@")
+      ? rawNext
+      : "/hours";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

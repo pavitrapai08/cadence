@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { splitHoursByBillable } from "@/lib/billable";
 import { weekStart, weekStartISO, shiftWeek } from "@/lib/week";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function round2(n: number) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** GET /api/projects — projects visible to this user (admin sees all). */
