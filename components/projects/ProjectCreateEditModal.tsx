@@ -26,11 +26,10 @@ interface Props {
 export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   const isEdit = !!existing;
 
-  // After a new project is created, justCreated holds it so members can be added
+  // After a new project is created, justCreated holds it
   const [justCreated, setJustCreated] = useState<ProjectFull | null>(null);
-  // The live project ID — either the pre-existing edit target or the just-created one
-  const projectId = existing?.id ?? justCreated?.id ?? null;
-  const showMembers = isEdit || !!justCreated;
+  // The effective project ID — either the pre-existing edit target or the just-created one
+  const effectiveProjectId = existing?.id ?? justCreated?.id ?? null;
 
   // Core fields
   const [name, setName] = useState(existing?.name ?? "");
@@ -46,7 +45,10 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   const [clients, setClients] = useState<Client[]>([]);
   const [tagGroups, setTagGroups] = useState<TagGroupOption[]>([]);
   const [allUsers, setAllUsers] = useState<UserBasic[]>([]);
+  // Committed members (from DB)
   const [members, setMembers] = useState<MemberUser[]>([]);
+  // Staged members selected before the project has been created
+  const [pendingMembers, setPendingMembers] = useState<MemberUser[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [loadingMeta, setLoadingMeta] = useState(true);
 
@@ -89,7 +91,6 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
     fetchMeta();
   }, [isEdit, existing]);
 
-  // Closing after creation still registers the project in the parent list
   function handleClose() {
     if (justCreated && !isEdit) {
       onSaved(justCreated);
@@ -154,8 +155,8 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
         tagGroupId: tagGroupId || null,
         budgetHours: budgetHours ? parseFloat(budgetHours) : null,
       };
-      const res = projectId
-        ? await fetch(`/api/projects/${projectId}`, {
+      const res = effectiveProjectId
+        ? await fetch(`/api/projects/${effectiveProjectId}`, {
             method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
           })
         : await fetch("/api/projects", {
@@ -164,15 +165,33 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
       const json = await res.json();
       if (!res.ok) { toast.error(json.error?.message ?? "Failed to save."); return; }
 
-      if (projectId) {
-        // Editing existing or patching a just-created project
+      if (effectiveProjectId) {
+        // Editing or re-saving a just-created project
         if (justCreated) setJustCreated(json.data);
         toast.success("Project updated.");
-        if (isEdit) onSaved(json.data); // auto-close only for pre-existing edits
+        if (isEdit) onSaved(json.data);
       } else {
-        // Brand new project — stay open so admin can add members
-        setJustCreated(json.data);
-        toast.success("Project created — add team members below.");
+        // Brand new — commit any staged members, then stay open for more
+        const newProject: ProjectFull = json.data;
+        setJustCreated(newProject);
+
+        if (pendingMembers.length > 0) {
+          await Promise.all(
+            pendingMembers.map((u) =>
+              fetch(`/api/projects/${newProject.id}/members`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: u.id }),
+              })
+            )
+          );
+          setMembers(pendingMembers);
+          setPendingMembers([]);
+          toast.success(
+            `Project created with ${pendingMembers.length} member${pendingMembers.length !== 1 ? "s" : ""}.`
+          );
+        } else {
+          toast.success("Project created — add team members below.");
+        }
       }
     } catch {
       toast.error("Something went wrong.");
@@ -182,8 +201,12 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   }
 
   async function addMember(u: UserBasic) {
-    if (!projectId) return;
-    const res = await fetch(`/api/projects/${projectId}/members`, {
+    if (!effectiveProjectId) {
+      // No project yet — stage the selection
+      setPendingMembers((prev) => [...prev, u]);
+      return;
+    }
+    const res = await fetch(`/api/projects/${effectiveProjectId}/members`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: u.id }),
     });
@@ -192,8 +215,12 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
   }
 
   async function removeMember(userId: string) {
-    if (!projectId) return;
-    const res = await fetch(`/api/projects/${projectId}/members`, {
+    if (!effectiveProjectId) {
+      // Not saved yet — just un-stage
+      setPendingMembers((prev) => prev.filter((m) => m.id !== userId));
+      return;
+    }
+    const res = await fetch(`/api/projects/${effectiveProjectId}/members`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
     });
@@ -201,11 +228,16 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
     else toast.error("Failed to remove member.");
   }
 
-  const memberIds = new Set(members.map((m) => m.id));
+  // Combined view: committed + staged (staged only exist before first save)
+  const allDisplayedMembers = [...members, ...pendingMembers];
+  const allDisplayedMemberIds = new Set(allDisplayedMembers.map((m) => m.id));
   const filteredUsers = allUsers.filter(
-    (u) => !memberIds.has(u.id) &&
-      (u.email.includes(memberSearch) || (u.full_name ?? "").toLowerCase().includes(memberSearch.toLowerCase()))
+    (u) =>
+      !allDisplayedMemberIds.has(u.id) &&
+      (u.email.includes(memberSearch) ||
+        (u.full_name ?? "").toLowerCase().includes(memberSearch.toLowerCase()))
   );
+  const pendingMemberIds = new Set(pendingMembers.map((m) => m.id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleClose}>
@@ -236,7 +268,7 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
                 <div>
                   <p className="text-sm font-medium text-emerald-800">Project created</p>
                   <p className="text-xs text-emerald-600 mt-0.5">
-                    Add team members below so they can see this project in their Hours tab. Click Done when finished.
+                    Add more team members below, or click Done to finish.
                   </p>
                 </div>
               </div>
@@ -396,59 +428,75 @@ export function ProjectCreateEditModal({ existing, onClose, onSaved }: Props) {
               </div>
             </div>
 
-            {/* Member management — shown for existing edits AND after creation */}
-            {showMembers && (
-              <div className="space-y-2 border-t border-gray-100 pt-4">
+            {/* Member management — always visible */}
+            <div className="space-y-2 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-700">Team members</label>
-                <p className="text-xs text-gray-400">
-                  Members can see and log hours against this project in their Hours tab.
-                </p>
-                {members.length > 0 && (
-                  <div className="space-y-1.5">
-                    {members.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-                        <div>
-                          <p className="text-xs font-medium text-gray-800">{m.full_name ?? m.email}</p>
-                          <p className="text-[11px] text-gray-400">{m.email}</p>
-                        </div>
+                {!effectiveProjectId && pendingMembers.length > 0 && (
+                  <span className="text-[11px] text-amber-600 font-medium">
+                    {pendingMembers.length} staged — saved when you create the project
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">
+                Members can see and log hours against this project in their Hours tab.
+              </p>
+
+              {allDisplayedMembers.length > 0 && (
+                <div className="space-y-1.5">
+                  {allDisplayedMembers.map((m) => (
+                    <div key={m.id} className={cn(
+                      "flex items-center justify-between rounded-lg px-3 py-2",
+                      pendingMemberIds.has(m.id) ? "bg-amber-50 border border-amber-100" : "bg-gray-50"
+                    )}>
+                      <div>
+                        <p className="text-xs font-medium text-gray-800">{m.full_name ?? m.email}</p>
+                        <p className="text-[11px] text-gray-400">{m.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {pendingMemberIds.has(m.id) && (
+                          <span className="text-[10px] font-medium text-amber-600 bg-amber-100 rounded px-1.5 py-0.5">
+                            pending
+                          </span>
+                        )}
                         <button onClick={() => removeMember(m.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-                <div className="rounded-lg border border-gray-200">
-                  <input
-                    value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)}
-                    placeholder="Search users to add…"
-                    className="w-full rounded-t-lg border-b border-gray-100 px-3 py-2 text-sm outline-none"
-                  />
-                  <div className="max-h-[120px] overflow-y-auto">
-                    {filteredUsers.slice(0, 8).map((u) => (
-                      <button
-                        key={u.id} type="button" onClick={() => addMember(u)}
-                        className="flex w-full items-center gap-2 border-b border-gray-50 px-3 py-2 text-left text-xs hover:bg-gray-50 last:border-b-0"
-                      >
-                        <Plus className="h-3 w-3 text-gray-400 shrink-0" />
-                        <span className="truncate">{u.full_name ?? u.email}</span>
-                        <span className="ml-auto text-[10px] text-gray-400 shrink-0">{u.role}</span>
-                      </button>
-                    ))}
-                    {filteredUsers.length === 0 && (
-                      <p className="px-3 py-2 text-xs text-gray-400">No users found.</p>
-                    )}
-                  </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="rounded-lg border border-gray-200">
+                <input
+                  value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search users to add…"
+                  className="w-full rounded-t-lg border-b border-gray-100 px-3 py-2 text-sm outline-none"
+                />
+                <div className="max-h-[120px] overflow-y-auto">
+                  {filteredUsers.slice(0, 8).map((u) => (
+                    <button
+                      key={u.id} type="button" onClick={() => addMember(u)}
+                      className="flex w-full items-center gap-2 border-b border-gray-50 px-3 py-2 text-left text-xs hover:bg-gray-50 last:border-b-0"
+                    >
+                      <Plus className="h-3 w-3 text-gray-400 shrink-0" />
+                      <span className="truncate">{u.full_name ?? u.email}</span>
+                      <span className="ml-auto text-[10px] text-gray-400 shrink-0">{u.role}</span>
+                    </button>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-gray-400">No users found.</p>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
         {/* Footer */}
         <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-6 py-4">
           {justCreated && !isEdit ? (
-            // Post-creation: Done closes and registers the project
             <button
               onClick={() => onSaved(justCreated)}
               className="flex items-center gap-1.5 rounded-lg px-6 py-2 text-sm font-medium text-white"

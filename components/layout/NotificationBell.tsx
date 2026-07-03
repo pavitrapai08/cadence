@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/client";
 
@@ -72,6 +73,11 @@ export function NotificationBell() {
             const n = payload.new as AppNotification;
             setNotifications((prev) => [n, ...prev.slice(0, 9)]);
             setUnread((prev) => prev + 1);
+            // Show a toast so the user sees it without opening the bell
+            toast(n.title, {
+              description: n.body ?? undefined,
+              icon: "🔔",
+            });
           }
         )
         .subscribe();
@@ -111,11 +117,14 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-secondary"
+        className={cn(
+          "relative flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-gray-100",
+          unread > 0 && "after:absolute after:inset-0 after:rounded-md after:ring-2 after:ring-red-400/40 after:animate-pulse"
+        )}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className={cn("h-5 w-5", unread > 0 ? "text-gray-700" : "text-gray-500")} />
         {unread > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
