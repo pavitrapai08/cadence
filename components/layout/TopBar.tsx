@@ -130,6 +130,7 @@ export function TopBar({ email, fullName }: TopBarProps) {
   }
 
   return (
+    <>
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 bg-background px-4 shadow-sm md:px-6">
       {/* Brand on mobile */}
       <div className="flex items-center gap-2 md:hidden">
@@ -223,5 +224,6 @@ export function TopBar({ email, fullName }: TopBarProps) {
     </header>
 
     {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
+    </>
   );
 }
