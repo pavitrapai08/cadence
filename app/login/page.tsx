@@ -165,7 +165,7 @@ function LoginInner() {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-[#f0f4f9] px-6 py-12">
+      <div className="flex flex-1 flex-col items-center justify-center bg-[#fdf4ef] px-6 py-12">
         {/* Mobile logo */}
         <div className="mb-8 flex flex-col items-center gap-2 lg:hidden">
           <div
