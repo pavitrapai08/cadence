@@ -89,7 +89,7 @@ function LoginInner() {
         className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col justify-between p-12 relative overflow-hidden"
         style={{
           background:
-            "linear-gradient(135deg, #0f3d22 0%, #1B6B3A 45%, #2d9a5a 100%)",
+            "linear-gradient(135deg, #0a1e4a 0%, #1a3d8f 45%, #2563eb 100%)",
         }}
       >
         {/* Decorative mesh circles */}
@@ -135,13 +135,13 @@ function LoginInner() {
         {/* Hero copy */}
         <div className="relative space-y-8">
           <div className="space-y-4">
-            <p className="text-emerald-200/80 text-sm font-medium uppercase tracking-widest">
+            <p className="text-blue-200/80 text-sm font-medium uppercase tracking-widest">
               DecisionFoundry
             </p>
             <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight">
               Track the rhythm<br />of your work.
             </h1>
-            <p className="text-emerald-100/75 text-lg leading-relaxed max-w-sm">
+            <p className="text-blue-100/75 text-lg leading-relaxed max-w-sm">
               The AI-powered timesheet platform built for every DecisionFoundry team member.
             </p>
           </div>
@@ -150,31 +150,27 @@ function LoginInner() {
           <ul className="space-y-4">
             {FEATURES.map((f) => (
               <li key={f.title} className="flex items-start gap-3.5">
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-emerald-200 ring-1 ring-white/10">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-blue-200 ring-1 ring-white/10">
                   {f.icon}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">{f.title}</p>
-                  <p className="text-sm text-emerald-100/65 leading-snug mt-0.5">{f.desc}</p>
+                  <p className="text-sm text-blue-100/65 leading-snug mt-0.5">{f.desc}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Footer note */}
-        <p className="relative text-xs text-emerald-100/40">
-          Replacing Timely · Powered by Claude AI
-        </p>
       </div>
 
       {/* ── Right panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-[#f5f7f5] px-6 py-12">
+      <div className="flex flex-1 flex-col items-center justify-center bg-[#f0f4f9] px-6 py-12">
         {/* Mobile logo */}
         <div className="mb-8 flex flex-col items-center gap-2 lg:hidden">
           <div
             className="flex h-12 w-12 items-center justify-center rounded-xl text-white font-bold text-xl"
-            style={{ background: "linear-gradient(135deg, #1B6B3A, #2d9a5a)" }}
+            style={{ background: "linear-gradient(135deg, #1a3d8f, #2563eb)" }}
           >
             C
           </div>
