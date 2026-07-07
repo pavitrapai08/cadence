@@ -40,10 +40,18 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
+  // Unauthenticated user hitting a protected route → send to login
   if (!user && !isPublic) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Already-authenticated user hitting /login → send straight into the app
+  if (user && path === "/login") {
+    const hoursUrl = request.nextUrl.clone();
+    hoursUrl.pathname = "/hours";
+    return NextResponse.redirect(hoursUrl);
   }
 
   return response;
