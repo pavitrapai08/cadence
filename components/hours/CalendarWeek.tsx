@@ -91,19 +91,31 @@ export function CalendarWeek({
             <div
               key={dateStr}
               className={cn(
-                "flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white transition-all",
+                "group flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-white",
+                "transition-all duration-200 ease-out",
+                "hover:-translate-y-2 hover:scale-[1.015]",
                 today
-                  ? "border-primary/30 shadow-[0_2px_16px_rgba(27,107,58,0.12)]"
-                  : "border-gray-100 shadow-sm hover:shadow-md"
+                  ? [
+                      "border-primary/30",
+                      "shadow-[0_2px_16px_rgba(27,107,58,0.12)]",
+                      "hover:shadow-[0_20px_56px_rgba(27,107,58,0.22)]",
+                      "hover:border-primary/50",
+                    ].join(" ")
+                  : [
+                      "border-gray-100",
+                      "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
+                      "hover:shadow-[0_20px_48px_rgba(0,0,0,0.13)]",
+                      "hover:border-primary/25",
+                    ].join(" ")
               )}
             >
               {/* Day header */}
               <div
                 className={cn(
-                  "select-none border-b px-4 py-3",
+                  "select-none border-b px-4 py-3 transition-colors duration-200",
                   today
-                    ? "border-primary/20 bg-gradient-to-br from-green-50 to-white"
-                    : "border-gray-100 bg-white"
+                    ? "border-primary/20 bg-gradient-to-br from-green-50 to-white group-hover:from-green-100/60"
+                    : "border-gray-100 bg-white group-hover:bg-gray-50/60"
                 )}
               >
                 <div className="flex items-start justify-between gap-1">
@@ -112,14 +124,14 @@ export function CalendarWeek({
                       {format(day, "EEE")}
                     </div>
                     <div className={cn(
-                      "mt-0.5 text-[28px] font-light leading-none",
-                      today ? "text-primary" : "text-[#111]"
+                      "mt-0.5 text-[32px] font-light leading-none transition-colors duration-200",
+                      today ? "text-primary" : "text-[#111] group-hover:text-primary"
                     )}>
                       {format(day, "d")}
                     </div>
                   </div>
                   {dailyTotal > 0 && (
-                    <span className="mt-0.5 text-xs text-[#9CA3AF] tabular-nums">
+                    <span className="mt-0.5 rounded-full bg-primary/8 px-2 py-0.5 text-xs font-medium text-primary tabular-nums">
                       {formatHours(dailyTotal)}
                     </span>
                   )}
@@ -128,7 +140,7 @@ export function CalendarWeek({
 
               {/* Entries + drop zone */}
               <DroppableDay date={dateStr} locked={locked}>
-                <div className="flex min-h-[260px] flex-col gap-1.5 p-2">
+                <div className="flex min-h-[520px] flex-col gap-1.5 p-2">
                   {dayEntries.map((entry) => (
                     <DraggableEntry
                       key={entry.id}
@@ -144,14 +156,15 @@ export function CalendarWeek({
                     <button
                       onClick={() => onNewEntry(dateStr)}
                       className={cn(
-                        "group flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium text-muted-foreground/60 transition-all hover:text-primary",
+                        "group/btn flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-all duration-150",
+                        "text-muted-foreground/50 hover:text-primary",
                         dayEntries.length === 0
-                          ? "mt-1 border border-dashed border-border hover:border-primary/40 hover:bg-primary/5"
+                          ? "mt-1 border border-dashed border-gray-200 hover:border-primary/40 hover:bg-primary/5"
                           : "hover:bg-primary/5"
                       )}
                     >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span className={cn(dayEntries.length === 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                      <Plus className="h-3.5 w-3.5 transition-transform duration-150 group-hover/btn:scale-110" />
+                      <span className={cn(dayEntries.length === 0 ? "opacity-100" : "opacity-0 group-hover/btn:opacity-100")}>
                         New
                       </span>
                     </button>
