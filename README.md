@@ -1,6 +1,6 @@
 # Cadence — Track the rhythm of your work
 
-Cadence is DecisionFoundry's internal AI-powered timesheet platform — a direct replacement for Timely. Employees log hours against projects, submit weekly timesheets, and use Claude AI to polish notes and reflect on their week. Admins manage the full workspace.
+Cadence is an internal AI-powered timesheet platform. Employees log hours against projects, submit weekly timesheets, and use Claude AI to polish notes and reflect on their week. Admins manage the full workspace.
 
 **Stack:** Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · Supabase (Postgres + Auth + Realtime) · Claude API (`claude-sonnet-4-6`) · Vercel
 
