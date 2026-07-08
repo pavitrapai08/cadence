@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Trash2, Copy, ArrowRight, Lock, Search, X } from "lucide-react";
+import { Loader2, Sparkles, Trash2, Copy, ArrowRight, Lock, Search, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HoursInput } from "./HoursInput";
@@ -50,6 +50,20 @@ export function EntryModal({
   const [datePrompt, setDatePrompt] = useState<"copy" | "move" | null>(null);
   const [targetDate, setTargetDate] = useState("");
   const [projectSearch, setProjectSearch] = useState("");
+  const [projectOpen, setProjectOpen] = useState(false);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!projectOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (projectDropdownRef.current && !projectDropdownRef.current.contains(e.target as Node)) {
+        setProjectOpen(false);
+        setProjectSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [projectOpen]);
 
   const selectedProject = projects.find((p) => p.id === projectId);
   const tags = selectedProject?.tag_group?.tags ?? [];
@@ -206,42 +220,72 @@ export function EntryModal({
                     <span>{selectedProject?.name ?? "Unknown"}</span>
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-lg border border-gray-200">
-                    {projects.length > 5 && (
-                      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2">
-                        <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search projects…"
-                          value={projectSearch}
-                          onChange={(e) => setProjectSearch(e.target.value)}
-                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
-                        />
+                  <div className="relative" ref={projectDropdownRef}>
+                    {/* Trigger button */}
+                    <button
+                      type="button"
+                      onClick={() => setProjectOpen((o) => !o)}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                        projectOpen
+                          ? "border-[#1B6B3A] ring-1 ring-[#1B6B3A]/20"
+                          : "border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      {selectedProject ? (
+                        <>
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: selectedProject.colour }} />
+                          <span className="flex-1 truncate text-gray-900">{selectedProject.name}</span>
+                        </>
+                      ) : (
+                        <span className="flex-1 text-gray-400">Select project…</span>
+                      )}
+                      <ChevronDown className={cn("h-4 w-4 shrink-0 text-gray-400 transition-transform duration-150", projectOpen && "rotate-180")} />
+                    </button>
+
+                    {/* Dropdown panel */}
+                    {projectOpen && (
+                      <div className="absolute left-0 top-full z-20 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+                        <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2">
+                          <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search projects…"
+                            value={projectSearch}
+                            onChange={(e) => setProjectSearch(e.target.value)}
+                            className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-[200px] overflow-y-auto">
+                          {filteredProjects.length === 0 ? (
+                            <p className="px-3 py-2.5 text-sm text-gray-400">No projects found.</p>
+                          ) : (
+                            filteredProjects.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  handleProjectSelect(p.id);
+                                  setProjectOpen(false);
+                                  setProjectSearch("");
+                                }}
+                                className={cn(
+                                  "flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 transition-colors",
+                                  projectId === p.id ? "bg-green-50 font-medium" : "hover:bg-gray-50"
+                                )}
+                              >
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.colour }} />
+                                <span className="truncate">{p.name}</span>
+                                {projectId === p.id && (
+                                  <span className="ml-auto text-xs font-semibold text-[#1B6B3A]">✓</span>
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
                       </div>
                     )}
-                    <div className="max-h-[180px] overflow-y-auto">
-                      {filteredProjects.length === 0 ? (
-                        <p className="px-3 py-2 text-sm text-gray-400">No projects found.</p>
-                      ) : (
-                        filteredProjects.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => handleProjectSelect(p.id)}
-                            className={cn(
-                              "flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2.5 text-left text-sm last:border-b-0 transition-colors",
-                              projectId === p.id ? "bg-green-50 font-medium" : "hover:bg-gray-50"
-                            )}
-                          >
-                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.colour }} />
-                            <span className="truncate">{p.name}</span>
-                            {projectId === p.id && (
-                              <span className="ml-auto text-xs font-semibold text-[#1B6B3A]">✓</span>
-                            )}
-                          </button>
-                        ))
-                      )}
-                    </div>
                   </div>
                 )}
               </div>
